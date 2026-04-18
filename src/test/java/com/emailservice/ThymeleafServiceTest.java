@@ -57,7 +57,7 @@ class ThymeleafServiceTest {
         variables.put("name", "Jane");
         variables.put("code", "ABC123");
 
-        String result = thymeleafService.processTextTemplate(template, variables);
+        String result = thymeleafService.processTemplate(template, variables);
 
         assertEquals("Hello ${name}, your code is ${code}", result);
     }

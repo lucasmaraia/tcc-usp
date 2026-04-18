@@ -55,8 +55,7 @@ class EmailTemplateUseCaseTest {
                 .name("Test Template")
                 .subject("Test Subject")
                 .htmlContent("<html><body><h1>Hello [[${name}]]</h1></body></html>")
-                .textContent("Hello ${name}")
-                .active(true)
+                .htmlContent("Hello ${name}")
                 .user(testUser)
                 .build();
     }
