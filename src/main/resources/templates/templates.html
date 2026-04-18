@@ -194,13 +194,24 @@
         async function openModal(templateId) {
             document.getElementById('templateModal').classList.add('show');
             document.getElementById('templateId').value = templateId || '';
-            document.getElementById('modalTitle').textContent = templateId ? 'Editar Template' : 'Novo Template';
+            document.getElementById('modalTitle').textContent = templateId ? 'Edit Template' : 'New Template';
             if (!templateId) {
                 document.getElementById('name').value = '';
                 document.getElementById('subject').value = '';
                 document.getElementById('htmlSource').value = '';
             }
             switchTab('html');
+            
+            setTimeout(function() {
+                var htmlSource = document.getElementById('htmlSource');
+                if (htmlSource) {
+                    htmlSource.oninput = function() {
+                        var html = htmlSource.value;
+                        var vars = extractVariables(html);
+                        document.getElementById('previewVars').value = JSON.stringify(vars, null, 4);
+                    };
+                }
+            }, 100);
         }
 
         function switchTab(tab) {
@@ -209,6 +220,20 @@
             if (tab === 'preview') {
                 document.querySelector('.tab-btn:nth-child(1)').classList.add('active');
                 document.getElementById('tab-preview').style.display = 'block';
+                
+                var html = document.getElementById('htmlSource').value;
+                var currentVarsText = document.getElementById('previewVars').value;
+                try {
+                    var currentVars = JSON.parse(currentVarsText || '{}');
+                    var extractedVars = extractVariables(html);
+                    Object.keys(extractedVars).forEach(function(key) {
+                        if (!currentVars[key]) {
+                            currentVars[key] = "";
+                        }
+                    });
+                    document.getElementById('previewVars').value = JSON.stringify(currentVars, null, 4);
+                } catch (e) {}
+                
                 setTimeout(updatePreview, 100);
             } else {
                 document.querySelector('.tab-btn:nth-child(2)').classList.add('active');
@@ -218,6 +243,19 @@
 
         function closeModal() {
             document.getElementById('templateModal').classList.remove('show');
+        }
+
+        function extractVariables(html) {
+            var vars = {};
+            var regex = /\$\{([a-zA-Z_][a-zA-Z0-9_]*)\}/g;
+            var match;
+            while ((match = regex.exec(html)) !== null) {
+                var varName = match[1];
+                if (!vars[varName]) {
+                    vars[varName] = "";
+                }
+            }
+            return vars;
         }
 
         async function updatePreview() {
