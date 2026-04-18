@@ -1,0 +1,469 @@
+{
+	"info": {
+		"_postman_id": "email-service-api",
+		"name": "Email Service API",
+		"description": "API para serviço de envio de emails com templates e RabbitMQ",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Autenticação",
+			"item": [
+				{
+					"name": "Registrar usuário",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"email\": \"testuser@example.com\",\n    \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/register",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "register"]
+						},
+						"description": "Registra um novo usuário no sistema"
+					},
+					"response": []
+				},
+				{
+					"name": "Login",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"var jsonData = pm.response.json();",
+									"pm.collectionVariables.set('token', jsonData.token);"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"testuser\",\n    \"password\": \"password123\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/auth/login",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "auth", "login"]
+						},
+						"description": "Faz login e retorna token JWT"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Templates de Email",
+			"item": [
+				{
+					"name": "Criar template",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"welcome-email\",\n    \"subject\": \"Bem-vindo ao sistema!\",\n    \"htmlContent\": \"<!DOCTYPE html>\\n<html xmlns:th=\\\"http://www.thymeleaf.org\\\">\\n<head>\\n    <meta charset=\\\"UTF-8\\\">\\n</head>\\n<body>\\n    <h1>Olá [[${name}]],</h1>\\n    <p>Bem-vindo ao nosso sistema!</p>\\n    <p>Seu email cadastrado é: <strong>[[${email}]]</strong></p>\\n    <p>Atenciosamente,<br>Equipe</p>\\n</body>\\n</html>\",\n    \"textContent\": \"Olá ${name}, bem-vindo ao sistema!\",\n    \"active\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/templates",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates"]
+						},
+						"description": "Cria um novo template de email com variáveis Thymeleaf"
+					},
+					"response": []
+				},
+				{
+					"name": "Listar templates do usuário",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates?activeOnly=false",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates"],
+							"query": [
+								{
+									"key": "activeOnly",
+									"value": "false",
+									"description": "true para listar apenas ativos"
+								}
+							]
+						},
+						"description": "Lista todos os templates do usuário logado"
+					},
+					"response": []
+				},
+				{
+					"name": "Buscar template por ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", ":id"]
+						},
+						"description": "Busca um template específico pelo ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Buscar template por nome",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/name/:name",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", "name", ":name"]
+						},
+						"description": "Busca um template específico pelo nome"
+					},
+					"response": []
+				},
+				{
+					"name": "Atualizar template",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"welcome-email\",\n    \"subject\": \"Bem-vindo ao sistema! (Atualizado)\",\n    \"htmlContent\": \"<!DOCTYPE html>\\n<html>\\n<body>\\n    <h1>Olá [[${name}]],</h1>\\n    <p>Conteúdo atualizado!</p>\\n</body>\\n</html>\",\n    \"textContent\": \"Olá ${name}, conteúdo atualizado!\",\n    \"active\": true\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", ":id"]
+						},
+						"description": "Atualiza um template existente"
+					},
+					"response": []
+				},
+				{
+					"name": "Deletar template",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/templates/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "templates", ":id"]
+						},
+						"description": "Deleta um template"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Envio de Emails",
+			"item": [
+				{
+					"name": "Enviar email",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"templateId\": \"SUBSTITUIR_PELO_ID_DO_TEMPLATE\",\n    \"toEmail\": \"destinatario@example.com\",\n    \"variables\": {\n        \"name\": \"João Silva\",\n        \"email\": \"joao@exemplo.com\"\n    }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/emails/send",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "emails", "send"]
+						},
+						"description": "Envia um email usando um template cadastrado. As variáveis são processadas pelo Thymeleaf."
+					},
+					"response": []
+				},
+				{
+					"name": "Buscar email por ID",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/emails/:id",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "emails", ":id"]
+						},
+						"description": "Busca status de um email enviado pelo ID"
+					},
+					"response": []
+				},
+				{
+					"name": "Buscar emails por status",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/emails/status/:status",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "emails", "status", ":status"]
+						},
+						"description": "Lista emails por status (PENDING, PROCESSING, SENT, FAILED, RETRYING)"
+					},
+					"response": []
+				},
+				{
+					"name": "Buscar emails por destinatário",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/emails/to/:email",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "emails", "to", ":email"]
+						},
+						"description": "Lista todos os emails enviados para um destinatário"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Exemplo completo",
+			"item": [
+				{
+					"name": "Fluxo completo - Registrar, criar template e enviar",
+					"item": [
+						{
+							"name": "1. Registrar usuário",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    pm.test('Registro bem-sucedido', function() {",
+											"        var jsonData = pm.response.json();",
+											"        pm.expect(jsonData.token).to.not.be.undefined;",
+											"        pm.collectionVariables.set('token', jsonData.token);",
+											"    });",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"username\": \"usuario_teste\",\n    \"email\": \"usuario@teste.com\",\n    \"password\": \"senha123\"\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/auth/register",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "auth", "register"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "2. Criar template de pedido",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"exec": [
+											"if (pm.response.code === 201) {",
+											"    var jsonData = pm.response.json();",
+											"    pm.collectionVariables.set('templateId', jsonData.id);",
+											"    pm.test('Template criado', function() {",
+											"        pm.expect(jsonData.name).to.eql('confirmacao-pedido');",
+											"    });",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"confirmacao-pedido\",\n    \"subject\": \"Confirmação do Pedido #{{orderId}}\",\n    \"htmlContent\": \"<!DOCTYPE html>\\n<html xmlns:th=\\\"http://www.thymeleaf.org\\\">\\n<head>\\n    <meta charset=\\\"UTF-8\\\">\\n    <style>\\n        body { font-family: Arial, sans-serif; }\\n        .container { max-width: 600px; margin: 0 auto; padding: 20px; }\\n        .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }\\n        .content { padding: 20px; background-color: #f9f9f9; }\\n        .footer { padding: 10px; text-align: center; font-size: 12px; color: #666; }\\n    </style>\\n</head>\\n<body>\\n    <div class=\\\"container\\\">\\n        <div class=\\\"header\\\">\\n            <h1>Pedido Confirmado!</h1>\\n        </div>\\n        <div class=\\\"content\\\">\\n            <p>Olá <strong>[[${customerName}]]</strong>,</p>\\n            <p>Seu pedido <strong>#[[${orderId}]]</strong> foi confirmado com sucesso!</p>\\n            <hr>\\n            <h3>Detalhes:</h3>\\n            <ul>\\n                <li><strong>Data:</strong> [[${orderDate}]]</li>\\n                <li><strong>Valor:</strong> R$ [[${totalAmount}]]</li>\\n                <li><strong>Status:</strong> [[${status}]]</li>\\n            </ul>\\n            <p th:if=\\\"${trackingCode != null}\\\">\\n                <strong>Código de rastreamento:</strong> [[${trackingCode}]]\\n            </p>\\n        </div>\\n        <div class=\\\"footer\\\">\\n            <p>Obrigado por comprar conosco!</p>\\n        </div>\\n    </div>\\n</body>\\n</html>\",\n    \"textContent\": \"Olá ${customerName}, seu pedido #${orderId} foi confirmado!\\n\\nValor: R$ ${totalAmount}\\nStatus: ${status}\\n\\nObrigado!\",\n    \"active\": true\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/templates",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "templates"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "3. Enviar email de confirmação",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}",
+										"type": "text"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"templateId\": \"{{templateId}}\",\n    \"toEmail\": \"cliente@exemplo.com\",\n    \"variables\": {\n        \"customerName\": \"Maria Santos\",\n        \"orderId\": \"12345\",\n        \"orderDate\": \"17/04/2026\",\n        \"totalAmount\": \"199.90\",\n        \"status\": \"Confirmado\",\n        \"trackingCode\": \"TRK-987654321\"\n    }\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/api/emails/send",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "emails", "send"]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "4. Verificar status do email",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer {{token}}",
+										"type": "text"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/api/emails/status/SENT",
+									"host": ["{{baseUrl}}"],
+									"path": ["api", "emails", "status", "SENT"]
+								}
+							},
+							"response": []
+						}
+					]
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8080"
+		},
+		{
+			"key": "token",
+			"value": ""
+		},
+		{
+			"key": "templateId",
+			"value": ""
+		}
+	]
+}

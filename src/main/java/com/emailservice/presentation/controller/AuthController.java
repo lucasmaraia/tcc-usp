@@ -1,0 +1,29 @@
+package com.emailservice.presentation.controller;
+
+import com.emailservice.application.dto.AuthResponse;
+import com.emailservice.application.dto.LoginRequest;
+import com.emailservice.application.dto.RegisterRequest;
+import com.emailservice.application.usecase.AuthUseCase;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthUseCase authUseCase;
+
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@Valid @RequestBody RegisterRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(authUseCase.register(request));
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authUseCase.login(request));
+    }
+}

@@ -1,0 +1,68 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: email-service
+
+  datasource:
+    url: jdbc:h2:file:./data/emaildb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASS:guest}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 10
+        retry:
+          enabled: false
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:l.cliniomaraia@gmail.com}
+    password: ${MAIL_PASSWORD:sfvm xvyy qajc jray}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+
+rabbitmq:
+  enabled: ${RABBITMQ_ENABLED:true}
+
+jwt:
+  secret: ${JWT_SECRET:Zm9vYmFyYmFzZWMyMDI0c2VjcmV0a2V5Zm9yZW1haWxTZXJ2aWNlc2lnbmluZw==}
+  expiration: ${JWT_EXPIRATION:120000}
+
+logging:
+  level:
+    root: INFO
+    com.emailservice: DEBUG
+    org.springframework.amqp: INFO
+    org.springframework.security: INFO
