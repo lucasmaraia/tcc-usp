@@ -1,0 +1,36 @@
+package com.emailservice.infrastructure.security;
+
+import com.emailservice.domain.entity.User;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import java.util.Collection;
+import java.util.List;
+
+/**
+ * Adapter that exposes the domain {@link User} to Spring Security,
+ * keeping the domain entity free of framework concerns.
+ */
+public record SecurityUser(User user) implements UserDetails {
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        return List.of(new SimpleGrantedAuthority("ROLE_USER"));
+    }
+
+    @Override
+    public String getPassword() {
+        return user.getPassword();
+    }
+
+    @Override
+    public String getUsername() {
+        return user.getUsername();
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return user.isEnabled();
+    }
+}

@@ -6,7 +6,7 @@ spring:
     name: email-service
 
   datasource:
-    url: jdbc:h2:file:./data/emaildb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE
+    url: jdbc:h2:file:./data/emaildb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
     username: sa
     password:
@@ -22,7 +22,6 @@ spring:
     show-sql: false
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.H2Dialect
         format_sql: true
 
   rabbitmq:
@@ -40,8 +39,9 @@ spring:
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
     port: ${MAIL_PORT:587}
-    username: ${MAIL_USERNAME:l.cliniomaraia@gmail.com}
-    password: ${MAIL_PASSWORD:sfvm xvyy qajc jray}
+    # Never commit real credentials: configure via environment variables.
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
     properties:
       mail:
         smtp:
@@ -57,8 +57,9 @@ rabbitmq:
   enabled: ${RABBITMQ_ENABLED:true}
 
 jwt:
-  secret: ${JWT_SECRET:Zm9vYmFyYmFzZWMyMDI0c2VjcmV0a2V5Zm9yZW1haWxTZXJ2aWNlc2lnbmluZw==}
-  expiration: ${JWT_EXPIRATION:600000}
+  # The default below is for local development only; always set JWT_SECRET in real deployments.
+  secret: ${JWT_SECRET:ieJKjv3c0Tef7GfReUWw2fJIOHhLX5ZjgAiZpZZ2jTNsPrQsYki49vAeNCcJv0Go}
+  expiration: ${JWT_EXPIRATION:3600000}
 
 logging:
   level:

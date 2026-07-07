@@ -1,6 +1,3 @@
-server:
-  port: 8080
-
 spring:
   application:
     name: email-service-test
@@ -16,21 +13,14 @@ spring:
       ddl-auto: create-drop
     show-sql: false
 
-  rabbitmq:
-    host: localhost
-    port: 5672
-    username: guest
-    password: guest
-
   mail:
     host: localhost
     port: 25
     username: test@test.com
     password: test
 
-  autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration
+rabbitmq:
+  enabled: false
 
 jwt:
   secret: dGVzdHNlY3JldGtleWZvcnVuaXR0ZXN0aW5ncHVycG9zZXNvbmx5

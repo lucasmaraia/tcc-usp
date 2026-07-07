@@ -84,7 +84,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"welcome-email\",\n    \"subject\": \"Bem-vindo ao sistema!\",\n    \"htmlContent\": \"<!DOCTYPE html>\\n<html xmlns:th=\\\"http://www.thymeleaf.org\\\">\\n<head>\\n    <meta charset=\\\"UTF-8\\\">\\n</head>\\n<body>\\n    <h1>Olá [[${name}]],</h1>\\n    <p>Bem-vindo ao nosso sistema!</p>\\n    <p>Seu email cadastrado é: <strong>[[${email}]]</strong></p>\\n    <p>Atenciosamente,<br>Equipe</p>\\n</body>\\n</html>\",\n    \"textContent\": \"Olá ${name}, bem-vindo ao sistema!\",\n    \"active\": true\n}",
+							"raw": "{\n    \"name\": \"welcome-email\",\n    \"subject\": \"Bem-vindo ao sistema!\",\n    \"htmlContent\": \"<!DOCTYPE html>\\n<html xmlns:th=\\\"http://www.thymeleaf.org\\\">\\n<head>\\n    <meta charset=\\\"UTF-8\\\">\\n</head>\\n<body>\\n    <h1>Olá [[${name}]],</h1>\\n    <p>Bem-vindo ao nosso sistema!</p>\\n    <p>Seu email cadastrado é: <strong>[[${email}]]</strong></p>\\n    <p>Atenciosamente,<br>Equipe</p>\\n</body>\\n</html>\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -180,7 +180,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"name\": \"welcome-email\",\n    \"subject\": \"Bem-vindo ao sistema! (Atualizado)\",\n    \"htmlContent\": \"<!DOCTYPE html>\\n<html>\\n<body>\\n    <h1>Olá [[${name}]],</h1>\\n    <p>Conteúdo atualizado!</p>\\n</body>\\n</html>\",\n    \"textContent\": \"Olá ${name}, conteúdo atualizado!\",\n    \"active\": true\n}",
+							"raw": "{\n    \"name\": \"welcome-email\",\n    \"subject\": \"Bem-vindo ao sistema! (Atualizado)\",\n    \"htmlContent\": \"<!DOCTYPE html>\\n<html>\\n<body>\\n    <h1>Olá [[${name}]],</h1>\\n    <p>Conteúdo atualizado!</p>\\n</body>\\n</html>\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -271,7 +271,7 @@
 					"response": []
 				},
 				{
-					"name": "Buscar emails por status",
+					"name": "Listar emails do usuário",
 					"request": {
 						"method": "GET",
 						"header": [
@@ -282,31 +282,19 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/emails/status/:status",
+							"raw": "{{baseUrl}}/api/emails?status=SENT",
 							"host": ["{{baseUrl}}"],
-							"path": ["api", "emails", "status", ":status"]
+							"path": ["api", "emails"],
+							"query": [
+								{
+									"key": "status",
+									"value": "SENT",
+									"description": "Filtro opcional: PENDING, RETRYING, SENT ou FAILED",
+									"disabled": true
+								}
+							]
 						},
-						"description": "Lista emails por status (PENDING, PROCESSING, SENT, FAILED, RETRYING)"
-					},
-					"response": []
-				},
-				{
-					"name": "Buscar emails por destinatário",
-					"request": {
-						"method": "GET",
-						"header": [
-							{
-								"key": "Authorization",
-								"value": "Bearer {{token}}",
-								"type": "text"
-							}
-						],
-						"url": {
-							"raw": "{{baseUrl}}/api/emails/to/:email",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "emails", "to", ":email"]
-						},
-						"description": "Lista todos os emails enviados para um destinatário"
+						"description": "Lista os emails do usuário logado, com filtro opcional por status (PENDING, RETRYING, SENT, FAILED)"
 					},
 					"response": []
 				}
@@ -341,7 +329,7 @@
 								"header": [],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"username\": \"usuario_teste\",\n    \"email\": \"usuario@teste.com\",\n    \"password\": \"senha123\"\n}",
+									"raw": "{\n    \"username\": \"usuario_teste\",\n    \"email\": \"usuario@teste.com\",\n    \"password\": \"senha12345\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -385,7 +373,7 @@
 								],
 								"body": {
 									"mode": "raw",
-									"raw": "{\n    \"name\": \"confirmacao-pedido\",\n    \"subject\": \"Confirmação do Pedido #{{orderId}}\",\n    \"htmlContent\": \"<!DOCTYPE html>\\n<html xmlns:th=\\\"http://www.thymeleaf.org\\\">\\n<head>\\n    <meta charset=\\\"UTF-8\\\">\\n    <style>\\n        body { font-family: Arial, sans-serif; }\\n        .container { max-width: 600px; margin: 0 auto; padding: 20px; }\\n        .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }\\n        .content { padding: 20px; background-color: #f9f9f9; }\\n        .footer { padding: 10px; text-align: center; font-size: 12px; color: #666; }\\n    </style>\\n</head>\\n<body>\\n    <div class=\\\"container\\\">\\n        <div class=\\\"header\\\">\\n            <h1>Pedido Confirmado!</h1>\\n        </div>\\n        <div class=\\\"content\\\">\\n            <p>Olá <strong>[[${customerName}]]</strong>,</p>\\n            <p>Seu pedido <strong>#[[${orderId}]]</strong> foi confirmado com sucesso!</p>\\n            <hr>\\n            <h3>Detalhes:</h3>\\n            <ul>\\n                <li><strong>Data:</strong> [[${orderDate}]]</li>\\n                <li><strong>Valor:</strong> R$ [[${totalAmount}]]</li>\\n                <li><strong>Status:</strong> [[${status}]]</li>\\n            </ul>\\n            <p th:if=\\\"${trackingCode != null}\\\">\\n                <strong>Código de rastreamento:</strong> [[${trackingCode}]]\\n            </p>\\n        </div>\\n        <div class=\\\"footer\\\">\\n            <p>Obrigado por comprar conosco!</p>\\n        </div>\\n    </div>\\n</body>\\n</html>\",\n    \"textContent\": \"Olá ${customerName}, seu pedido #${orderId} foi confirmado!\\n\\nValor: R$ ${totalAmount}\\nStatus: ${status}\\n\\nObrigado!\",\n    \"active\": true\n}",
+									"raw": "{\n    \"name\": \"confirmacao-pedido\",\n    \"subject\": \"Confirmação do Pedido #{{orderId}}\",\n    \"htmlContent\": \"<!DOCTYPE html>\\n<html xmlns:th=\\\"http://www.thymeleaf.org\\\">\\n<head>\\n    <meta charset=\\\"UTF-8\\\">\\n    <style>\\n        body { font-family: Arial, sans-serif; }\\n        .container { max-width: 600px; margin: 0 auto; padding: 20px; }\\n        .header { background-color: #4CAF50; color: white; padding: 20px; text-align: center; }\\n        .content { padding: 20px; background-color: #f9f9f9; }\\n        .footer { padding: 10px; text-align: center; font-size: 12px; color: #666; }\\n    </style>\\n</head>\\n<body>\\n    <div class=\\\"container\\\">\\n        <div class=\\\"header\\\">\\n            <h1>Pedido Confirmado!</h1>\\n        </div>\\n        <div class=\\\"content\\\">\\n            <p>Olá <strong>[[${customerName}]]</strong>,</p>\\n            <p>Seu pedido <strong>#[[${orderId}]]</strong> foi confirmado com sucesso!</p>\\n            <hr>\\n            <h3>Detalhes:</h3>\\n            <ul>\\n                <li><strong>Data:</strong> [[${orderDate}]]</li>\\n                <li><strong>Valor:</strong> R$ [[${totalAmount}]]</li>\\n                <li><strong>Status:</strong> [[${status}]]</li>\\n            </ul>\\n            <p>\\n                <strong>Código de rastreamento:</strong> [[${trackingCode}]]\\n            </p>\\n        </div>\\n        <div class=\\\"footer\\\">\\n            <p>Obrigado por comprar conosco!</p>\\n        </div>\\n    </div>\\n</body>\\n</html>\"\n}",
 									"options": {
 										"raw": {
 											"language": "json"
@@ -440,9 +428,15 @@
 									}
 								],
 								"url": {
-									"raw": "{{baseUrl}}/api/emails/status/SENT",
+									"raw": "{{baseUrl}}/api/emails?status=SENT",
 									"host": ["{{baseUrl}}"],
-									"path": ["api", "emails", "status", "SENT"]
+									"path": ["api", "emails"],
+									"query": [
+										{
+											"key": "status",
+											"value": "SENT"
+										}
+									]
 								}
 							},
 							"response": []

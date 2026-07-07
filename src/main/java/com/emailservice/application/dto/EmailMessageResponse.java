@@ -1,28 +1,38 @@
 package com.emailservice.application.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.emailservice.domain.entity.EmailMessage;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class EmailMessageResponse {
-    private UUID id;
-    private UUID userId;
-    private String userEmail;
-    private UUID templateId;
-    private String templateName;
-    private String toEmail;
-    private String subject;
-    private String status;
-    private int retryCount;
-    private String errorMessage;
-    private LocalDateTime sentAt;
-    private LocalDateTime createdAt;
+public record EmailMessageResponse(
+        UUID id,
+        UUID userId,
+        String userEmail,
+        UUID templateId,
+        String templateName,
+        String toEmail,
+        String subject,
+        String status,
+        int retryCount,
+        String errorMessage,
+        LocalDateTime sentAt,
+        LocalDateTime createdAt
+) {
+    public static EmailMessageResponse from(EmailMessage message) {
+        return new EmailMessageResponse(
+                message.getId(),
+                message.getUserId(),
+                message.getUserEmail(),
+                message.getTemplateId(),
+                message.getTemplateName(),
+                message.getToEmail(),
+                message.getSubject(),
+                message.getStatus().name(),
+                message.getRetryCount(),
+                message.getErrorMessage(),
+                message.getSentAt(),
+                message.getCreatedAt()
+        );
+    }
 }

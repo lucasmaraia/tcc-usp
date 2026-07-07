@@ -1,15 +1,13 @@
-version: '3.8'
-
 services:
   rabbitmq:
-    image: rabbitmq:3.13-management
+    image: rabbitmq:4.1-management
     container_name: email-service-rabbitmq
     ports:
       - "5672:5672"   # AMQP protocol
       - "15672:15672" # Management UI
     environment:
-      RABBITMQ_DEFAULT_USER: guest
-      RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -31,15 +29,16 @@ services:
       - SPRING_PROFILES_ACTIVE=prod
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASS=guest
+      - RABBITMQ_USER=${RABBITMQ_USER:-guest}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-guest}
       - RABBITMQ_ENABLED=true
-      - JWT_SECRET=Zm9vYmFyYmFzZWMyMDI0c2VjcmV0a2V5Zm9yZW1haWxTZXJ2aWNlc2lnbmluZw==
-      - JWT_EXPIRATION=86400000
-      - MAIL_HOST=smtp.gmail.com
-      - MAIL_PORT=587
-      - MAIL_USERNAME=your-email@gmail.com
-      - MAIL_PASSWORD=your-app-password
+      # Required: define these in a .env file (never commit real values).
+      - JWT_SECRET=${JWT_SECRET:?Set JWT_SECRET in your .env file}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-3600000}
+      - MAIL_HOST=${MAIL_HOST:-smtp.gmail.com}
+      - MAIL_PORT=${MAIL_PORT:-587}
+      - MAIL_USERNAME=${MAIL_USERNAME:?Set MAIL_USERNAME in your .env file}
+      - MAIL_PASSWORD=${MAIL_PASSWORD:?Set MAIL_PASSWORD in your .env file}
     depends_on:
       rabbitmq:
         condition: service_healthy

@@ -19,7 +19,7 @@ public class EmailMessage {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "user_id")
+    @Column(name = "user_id", nullable = false)
     private UUID userId;
 
     @Column(name = "user_email")
@@ -31,7 +31,7 @@ public class EmailMessage {
     @Column(name = "template_name", nullable = false)
     private String templateName;
 
-    @Column(nullable = false)
+    @Column(name = "to_email", nullable = false)
     private String toEmail;
 
     @Column(nullable = false)
@@ -75,9 +75,8 @@ public class EmailMessage {
 
     public enum EmailStatus {
         PENDING,
-        PROCESSING,
         SENT,
-        FAILED,
-        RETRYING
+        RETRYING,
+        FAILED
     }
 }

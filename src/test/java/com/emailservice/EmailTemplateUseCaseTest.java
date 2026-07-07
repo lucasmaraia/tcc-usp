@@ -1,9 +1,12 @@
 package com.emailservice;
 
+import com.emailservice.application.dto.EmailTemplateRequest;
+import com.emailservice.application.port.TemplateRenderer;
 import com.emailservice.application.usecase.EmailTemplateUseCase;
 import com.emailservice.domain.entity.EmailTemplate;
 import com.emailservice.domain.entity.User;
 import com.emailservice.domain.exception.BadRequestException;
+import com.emailservice.domain.exception.ResourceNotFoundException;
 import com.emailservice.domain.repository.EmailTemplateRepository;
 import com.emailservice.domain.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,9 +19,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.Optional;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class EmailTemplateUseCaseTest {
@@ -28,6 +34,9 @@ class EmailTemplateUseCaseTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private TemplateRenderer templateRenderer;
 
     @InjectMocks
     private EmailTemplateUseCase templateUseCase;
@@ -55,20 +64,16 @@ class EmailTemplateUseCaseTest {
                 .name("Test Template")
                 .subject("Test Subject")
                 .htmlContent("<html><body><h1>Hello [[${name}]]</h1></body></html>")
-                .htmlContent("Hello ${name}")
                 .user(testUser)
                 .build();
     }
 
     @Test
     void createTemplate_Success() {
-        var request = new com.emailservice.application.dto.EmailTemplateRequest();
-        request.setName("New Template");
-        request.setSubject("New Subject");
-        request.setHtmlContent("<html><body>New Content</body></html>");
+        var request = new EmailTemplateRequest("New Template", "New Subject", "<html><body>New Content</body></html>");
 
-        when(templateRepository.existsByName("New Template")).thenReturn(false);
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.existsByNameAndUserId("New Template", userId)).thenReturn(false);
         when(templateRepository.save(any(EmailTemplate.class))).thenAnswer(invocation -> {
             EmailTemplate saved = invocation.getArgument(0);
             saved.setId(UUID.randomUUID());
@@ -78,50 +83,50 @@ class EmailTemplateUseCaseTest {
         var result = templateUseCase.createTemplate(request, "testuser");
 
         assertNotNull(result);
-        assertEquals("New Template", result.getName());
-        assertEquals("New Subject", result.getSubject());
+        assertEquals("New Template", result.name());
+        assertEquals("New Subject", result.subject());
         verify(templateRepository).save(any(EmailTemplate.class));
     }
 
     @Test
     void createTemplate_DuplicateName_ThrowsException() {
-        var request = new com.emailservice.application.dto.EmailTemplateRequest();
-        request.setName("Existing Template");
-        request.setSubject("Subject");
-        request.setHtmlContent("Content");
+        var request = new EmailTemplateRequest("Existing Template", "Subject", "Content");
 
-        when(templateRepository.existsByName("Existing Template")).thenReturn(true);
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.existsByNameAndUserId("Existing Template", userId)).thenReturn(true);
 
         assertThrows(BadRequestException.class, () ->
-            templateUseCase.createTemplate(request, "testuser")
+                templateUseCase.createTemplate(request, "testuser")
         );
     }
 
     @Test
     void getTemplateById_Success() {
-        when(templateRepository.findById(templateId)).thenReturn(Optional.of(testTemplate));
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByIdAndUserId(templateId, userId)).thenReturn(Optional.of(testTemplate));
 
-        var result = templateUseCase.getTemplateById(templateId);
+        var result = templateUseCase.getTemplateById(templateId, "testuser");
 
         assertNotNull(result);
-        assertEquals(templateId, result.getId());
-        assertEquals("Test Template", result.getName());
+        assertEquals(templateId, result.id());
+        assertEquals("Test Template", result.name());
     }
 
     @Test
     void getTemplateById_NotFound_ThrowsException() {
         UUID nonExistentId = UUID.randomUUID();
-        when(templateRepository.findById(nonExistentId)).thenReturn(Optional.empty());
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByIdAndUserId(nonExistentId, userId)).thenReturn(Optional.empty());
 
-        assertThrows(com.emailservice.domain.exception.ResourceNotFoundException.class, () ->
-            templateUseCase.getTemplateById(nonExistentId)
+        assertThrows(ResourceNotFoundException.class, () ->
+                templateUseCase.getTemplateById(nonExistentId, "testuser")
         );
     }
 
     @Test
     void deleteTemplate_Success() {
-        when(templateRepository.findById(templateId)).thenReturn(Optional.of(testTemplate));
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByIdAndUserId(templateId, userId)).thenReturn(Optional.of(testTemplate));
 
         templateUseCase.deleteTemplate(templateId, "testuser");
 
@@ -129,17 +134,18 @@ class EmailTemplateUseCaseTest {
     }
 
     @Test
-    void deleteTemplate_Unauthorized_ThrowsException() {
+    void deleteTemplate_NotOwned_ThrowsNotFound() {
+        UUID otherUserId = UUID.randomUUID();
         User otherUser = User.builder()
-                .id(UUID.randomUUID())
+                .id(otherUserId)
                 .username("otheruser")
                 .build();
 
-        when(templateRepository.findById(templateId)).thenReturn(Optional.of(testTemplate));
         when(userRepository.findByUsername("otheruser")).thenReturn(Optional.of(otherUser));
+        when(templateRepository.findByIdAndUserId(templateId, otherUserId)).thenReturn(Optional.empty());
 
-        assertThrows(BadRequestException.class, () ->
-            templateUseCase.deleteTemplate(templateId, "otheruser")
+        assertThrows(ResourceNotFoundException.class, () ->
+                templateUseCase.deleteTemplate(templateId, "otheruser")
         );
     }
 }

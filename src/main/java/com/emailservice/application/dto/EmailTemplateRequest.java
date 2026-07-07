@@ -2,22 +2,17 @@ package com.emailservice.application.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class EmailTemplateRequest {
-    @NotBlank(message = "Name is required")
-    private String name;
+public record EmailTemplateRequest(
 
-    @NotBlank(message = "Subject is required")
-    private String subject;
+        @NotBlank(message = "Name is required")
+        @Size(max = 100, message = "Name must be at most 100 characters")
+        String name,
 
-    @NotBlank(message = "HTML content is required")
-    private String htmlContent;
-}
+        @NotBlank(message = "Subject is required")
+        @Size(max = 255, message = "Subject must be at most 255 characters")
+        String subject,
+
+        @NotBlank(message = "HTML content is required")
+        String htmlContent
+) {}

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meus Templates — Email Service</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <header class="app-header">
+        <div class="brand">
+            <span class="brand-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2"/>
+                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>
+                </svg>
+            </span>
+            <h1>Email Service</h1>
+        </div>
+        <div class="header-user">
+            <span class="user-email" id="userEmail"></span>
+            <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">Sair</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Templates -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Meus Templates</h2>
+                    <p class="card-subtitle">Crie templates com variáveis como <code>${nome}</code> e envie e-mails personalizados.</p>
+                </div>
+                <button class="btn btn-primary" id="newTemplateBtn" type="button">+ Novo template</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Assunto</th>
+                            <th>Criado em</th>
+                            <th style="text-align:right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="templateList"></tbody>
+                </table>
+            </div>
+            <div id="templatesEmpty" class="empty-state" hidden>
+                <div class="empty-icon">📄</div>
+                <p>Nenhum template ainda. Crie o primeiro!</p>
+                <button class="btn btn-primary" id="emptyNewTemplateBtn" type="button">+ Novo template</button>
+            </div>
+        </section>
+
+        <!-- Sent messages -->
+        <section class="card">
+            <div class="card-header">
+                <div>
+                    <h2>Histórico de envios</h2>
+                    <p class="card-subtitle">Acompanhe o status dos e-mails processados pela fila.</p>
+                </div>
+                <button class="btn btn-outline btn-sm" id="refreshMessagesBtn" type="button">Atualizar</button>
+            </div>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Destinatário</th>
+                            <th>Template</th>
+                            <th>Status</th>
+                            <th>Tentativas</th>
+                            <th>Enviado em</th>
+                        </tr>
+                    </thead>
+                    <tbody id="messageList"></tbody>
+                </table>
+            </div>
+            <div id="messagesEmpty" class="empty-state" hidden>
+                <div class="empty-icon">📭</div>
+                <p>Nenhum e-mail enviado ainda.</p>
+            </div>
+        </section>
+    </main>
+
+    <!-- Template editor modal -->
+    <div id="templateModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Novo template</h2>
+                <button class="modal-close" type="button" data-close="templateModal" aria-label="Fechar">&times;</button>
+            </div>
+            <form id="templateForm">
+                <div class="modal-body">
+                    <input type="hidden" id="templateId">
+                    <div class="form-group">
+                        <label for="name">Nome do template</label>
+                        <input type="text" id="name" class="form-control" required maxlength="100"
+                               placeholder="ex.: confirmacao-pedido">
+                    </div>
+                    <div class="form-group">
+                        <label for="subject">Assunto do e-mail</label>
+                        <input type="text" id="subject" class="form-control" required maxlength="255"
+                               placeholder="ex.: Seu pedido foi confirmado!">
+                    </div>
+                    <div class="form-group">
+                        <label>Conteúdo</label>
+                        <div class="tabs" role="tablist">
+                            <button type="button" class="tab-btn active" id="tabBtnHtml" role="tab">Código HTML</button>
+                            <button type="button" class="tab-btn" id="tabBtnPreview" role="tab">Pré-visualização</button>
+                        </div>
+                        <div id="tabHtml" role="tabpanel">
+                            <textarea id="htmlSource" class="form-control code-editor" spellcheck="false"
+                                      placeholder="&lt;html&gt;&#10;  &lt;body&gt;&#10;    &lt;h1&gt;Olá, ${nome}!&lt;/h1&gt;&#10;  &lt;/body&gt;&#10;&lt;/html&gt;"></textarea>
+                            <span class="hint">Use <code>${variavel}</code> para valores dinâmicos. As variáveis são detectadas automaticamente.</span>
+                        </div>
+                        <div id="tabPreview" role="tabpanel" hidden>
+                            <div class="preview-vars">
+                                <label for="previewVars">Variáveis de teste (JSON)</label>
+                                <textarea id="previewVars" class="form-control" rows="3"></textarea>
+                                <button type="button" class="btn btn-outline btn-sm" id="updatePreviewBtn" style="margin-top:0.5rem">Atualizar pré-visualização</button>
+                            </div>
+                            <iframe id="previewFrame" class="preview-frame" sandbox="" title="Pré-visualização do template"></iframe>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" data-close="templateModal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="saveTemplateBtn">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Send email modal -->
+    <div id="sendModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="sendModalTitle">
+        <div class="modal-content modal-sm">
+            <div class="modal-header">
+                <h2 id="sendModalTitle">Enviar e-mail</h2>
+                <button class="modal-close" type="button" data-close="sendModal" aria-label="Fechar">&times;</button>
+            </div>
+            <form id="sendForm">
+                <div class="modal-body">
+                    <input type="hidden" id="sendTemplateId">
+                    <div class="form-group">
+                        <label for="toEmail">Destinatário</label>
+                        <input type="email" id="toEmail" class="form-control" required placeholder="destinatario@exemplo.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="sendVars">Variáveis (JSON)</label>
+                        <textarea id="sendVars" class="form-control" rows="6" style="font-family:var(--font-mono);font-size:0.82rem"></textarea>
+                        <span class="hint">Preencha os valores das variáveis detectadas no template.</span>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline" data-close="sendModal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="sendEmailBtn">Enviar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="toast" class="toast" role="status"></div>
+
+    <script src="/js/api.js"></script>
+    <script src="/js/templates.js"></script>
+</body>
+</html>

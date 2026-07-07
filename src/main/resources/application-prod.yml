@@ -1,0 +1,17 @@
+spring:
+  h2:
+    console:
+      enabled: false
+
+  mail:
+    # Required in production: the application must not start without credentials.
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+
+jwt:
+  # Required in production: no fallback secret.
+  secret: ${JWT_SECRET}
+
+logging:
+  level:
+    com.emailservice: INFO

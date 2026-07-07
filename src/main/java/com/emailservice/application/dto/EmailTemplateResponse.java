@@ -1,22 +1,26 @@
 package com.emailservice.application.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import com.emailservice.domain.entity.EmailTemplate;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class EmailTemplateResponse {
-    private UUID id;
-    private String name;
-    private String subject;
-    private String htmlContent;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+public record EmailTemplateResponse(
+        UUID id,
+        String name,
+        String subject,
+        String htmlContent,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
+) {
+    public static EmailTemplateResponse from(EmailTemplate template) {
+        return new EmailTemplateResponse(
+                template.getId(),
+                template.getName(),
+                template.getSubject(),
+                template.getHtmlContent(),
+                template.getCreatedAt(),
+                template.getUpdatedAt()
+        );
+    }
 }

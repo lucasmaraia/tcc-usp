@@ -3,22 +3,22 @@ package com.emailservice.application.usecase;
 import com.emailservice.application.dto.EmailMessageDto;
 import com.emailservice.application.dto.EmailMessageResponse;
 import com.emailservice.application.dto.SendEmailRequest;
+import com.emailservice.application.port.EmailQueueGateway;
 import com.emailservice.domain.entity.EmailMessage;
 import com.emailservice.domain.entity.EmailTemplate;
+import com.emailservice.domain.entity.User;
 import com.emailservice.domain.exception.ResourceNotFoundException;
 import com.emailservice.domain.repository.EmailMessageRepository;
 import com.emailservice.domain.repository.EmailTemplateRepository;
-import com.emailservice.infrastructure.messaging.EmailMessageSender;
-import com.emailservice.infrastructure.security.JwtService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.emailservice.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.json.JsonMapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,113 +26,98 @@ public class SendEmailUseCase {
 
     private final EmailTemplateRepository templateRepository;
     private final EmailMessageRepository messageRepository;
-    private final EmailMessageSender emailMessageSender;
-    private final ObjectMapper objectMapper;
-    private final JwtService jwtService;
+    private final UserRepository userRepository;
+    private final EmailQueueGateway emailQueueGateway;
+    private final JsonMapper jsonMapper;
 
     @Transactional
-    public EmailMessageResponse sendEmail(SendEmailRequest request, String token) {
-        UUID userId = jwtService.extractUserId(token);
-        String userEmail = jwtService.extractEmail(token);
+    public EmailMessageResponse sendEmail(SendEmailRequest request, String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        EmailTemplate template = templateRepository.findById(request.getTemplateId())
+        EmailTemplate template = templateRepository.findByIdAndUserId(request.templateId(), user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Template not found"));
 
-        String variablesJson;
-        try {
-            variablesJson = objectMapper.writeValueAsString(request.getVariables());
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to serialize variables", e);
-        }
-
         EmailMessage message = EmailMessage.builder()
-                .userId(userId)
-                .userEmail(userEmail)
+                .userId(user.getId())
+                .userEmail(user.getEmail())
                 .templateId(template.getId())
                 .templateName(template.getName())
-                .toEmail(request.getToEmail())
+                .toEmail(request.toEmail())
                 .subject(template.getSubject())
-                .variablesJson(variablesJson)
+                .variablesJson(jsonMapper.writeValueAsString(request.variables()))
                 .status(EmailMessage.EmailStatus.PENDING)
                 .retryCount(0)
                 .build();
 
         message = messageRepository.save(message);
 
-        EmailMessageDto dto = EmailMessageDto.builder()
-                .id(message.getId())
-                .userId(userId)
-                .templateId(template.getId())
-                .templateName(template.getName())
-                .toEmail(request.getToEmail())
-                .subject(template.getSubject())
-                .htmlContent(template.getHtmlContent())
-                .variables(request.getVariables())
-                .retryCount(0)
-                .build();
+        EmailMessageDto dto = new EmailMessageDto(
+                message.getId(),
+                user.getId(),
+                template.getId(),
+                template.getName(),
+                request.toEmail(),
+                template.getSubject(),
+                template.getHtmlContent(),
+                request.variables(),
+                0
+        );
 
-        emailMessageSender.sendEmail(dto);
+        emailQueueGateway.sendEmail(dto);
 
-        return toResponse(message);
+        return EmailMessageResponse.from(message);
     }
 
-    public EmailMessageResponse getMessageById(UUID id) {
-        EmailMessage message = messageRepository.findById(id)
+    public EmailMessageResponse getMessageById(UUID id, String username) {
+        User user = findUser(username);
+        EmailMessage message = messageRepository.findByIdAndUserId(id, user.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Email message not found"));
-        return toResponse(message);
+        return EmailMessageResponse.from(message);
     }
 
-    public List<EmailMessageResponse> getMessagesByStatus(EmailMessage.EmailStatus status) {
-        return messageRepository.findByStatus(status).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
-    }
-
-    public List<EmailMessageResponse> getMessagesByEmail(String email) {
-        return messageRepository.findByToEmail(email).stream()
-                .map(this::toResponse)
-                .collect(Collectors.toList());
+    public List<EmailMessageResponse> getMessages(String username, EmailMessage.EmailStatus status) {
+        User user = findUser(username);
+        List<EmailMessage> messages = status == null
+                ? messageRepository.findByUserIdOrderByCreatedAtDesc(user.getId())
+                : messageRepository.findByUserIdAndStatusOrderByCreatedAtDesc(user.getId(), status);
+        return messages.stream().map(EmailMessageResponse::from).toList();
     }
 
     @Transactional
-    public void updateMessageStatus(UUID id, EmailMessage.EmailStatus status, String errorMessage) {
-        EmailMessage message = messageRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Email message not found"));
-        
-        message.setStatus(status);
-        if (errorMessage != null) {
+    public void markSent(UUID id, String htmlBody) {
+        messageRepository.findById(id).ifPresent(message -> {
+            message.setStatus(EmailMessage.EmailStatus.SENT);
+            message.setHtmlBody(htmlBody);
+            message.setSentAt(LocalDateTime.now());
+            messageRepository.save(message);
+        });
+    }
+
+    @Transactional
+    public void markRetrying(UUID id) {
+        messageRepository.findById(id).ifPresent(message -> {
+            message.setStatus(EmailMessage.EmailStatus.RETRYING);
+            message.setRetryCount(message.getRetryCount() + 1);
+            messageRepository.save(message);
+        });
+    }
+
+    @Transactional
+    public void markFailed(UUID id, String errorMessage) {
+        messageRepository.findById(id).ifPresent(message -> {
+            message.setStatus(EmailMessage.EmailStatus.FAILED);
             message.setErrorMessage(errorMessage);
-        }
-        
-        if (status == EmailMessage.EmailStatus.SENT) {
-            message.setSentAt(java.time.LocalDateTime.now());
-        }
-        
-        messageRepository.save(message);
+            messageRepository.save(message);
+        });
     }
 
-    @Transactional
-    public void incrementRetryCount(UUID id) {
-        EmailMessage message = messageRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Email message not found"));
-        message.setRetryCount(message.getRetryCount() + 1);
-        messageRepository.save(message);
+    public boolean isAlreadySent(UUID id) {
+        return messageRepository.existsByIdAndStatus(id, EmailMessage.EmailStatus.SENT);
     }
 
-    private EmailMessageResponse toResponse(EmailMessage message) {
-        return EmailMessageResponse.builder()
-                .id(message.getId())
-                .userId(message.getUserId())
-                .userEmail(message.getUserEmail())
-                .templateId(message.getTemplateId())
-                .templateName(message.getTemplateName())
-                .toEmail(message.getToEmail())
-                .subject(message.getSubject())
-                .status(message.getStatus().name())
-                .retryCount(message.getRetryCount())
-                .errorMessage(message.getErrorMessage())
-                .sentAt(message.getSentAt())
-                .createdAt(message.getCreatedAt())
-                .build();
+    private User findUser(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
     }
 }

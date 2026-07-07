@@ -1,8 +1,13 @@
 package com.emailservice.infrastructure.config;
 
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.DirectExchange;
+import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
-import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
+import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -24,9 +29,11 @@ public class RabbitMQConfig {
     public static final String RETRY_EXCHANGE = "email.retry.exchange";
     public static final String RETRY_ROUTING_KEY = "email.retry";
 
+    private static final int RETRY_DELAY_MS = 10_000;
+
     @Bean
     public MessageConverter jsonMessageConverter() {
-        return new Jackson2JsonMessageConverter();
+        return new JacksonJsonMessageConverter();
     }
 
     @Bean
@@ -37,66 +44,58 @@ public class RabbitMQConfig {
     }
 
     @Bean
-    public org.springframework.amqp.core.Queue emailQueue() {
-        return org.springframework.amqp.core.QueueBuilder.durable(EMAIL_QUEUE)
+    public Queue emailQueue() {
+        return QueueBuilder.durable(EMAIL_QUEUE)
                 .withArgument("x-dead-letter-exchange", EMAIL_DLX)
                 .withArgument("x-dead-letter-routing-key", EMAIL_DLQ_ROUTING_KEY)
                 .build();
     }
 
     @Bean
-    public org.springframework.amqp.core.DirectExchange emailExchange() {
-        return new org.springframework.amqp.core.DirectExchange(EMAIL_EXCHANGE);
+    public DirectExchange emailExchange() {
+        return new DirectExchange(EMAIL_EXCHANGE);
     }
 
     @Bean
-    public org.springframework.amqp.core.Binding emailBinding(
-            org.springframework.amqp.core.Queue emailQueue, 
-            org.springframework.amqp.core.DirectExchange emailExchange) {
-        return org.springframework.amqp.core.BindingBuilder.bind(emailQueue)
-                .to(emailExchange)
-                .with(EMAIL_ROUTING_KEY);
+    public Binding emailBinding(Queue emailQueue, DirectExchange emailExchange) {
+        return BindingBuilder.bind(emailQueue).to(emailExchange).with(EMAIL_ROUTING_KEY);
     }
 
+    /**
+     * Messages parked here expire after {@link #RETRY_DELAY_MS} and are dead-lettered
+     * back into the main email exchange, which re-delivers them to the consumer.
+     */
     @Bean
-    public org.springframework.amqp.core.Queue retryQueue() {
-        return org.springframework.amqp.core.QueueBuilder.durable(RETRY_QUEUE)
-                .withArgument("x-dead-letter-exchange", EMAIL_DLX)
-                .withArgument("x-dead-letter-routing-key", EMAIL_DLQ_ROUTING_KEY)
-                .withArgument("x-message-ttl", 10000)
+    public Queue retryQueue() {
+        return QueueBuilder.durable(RETRY_QUEUE)
+                .withArgument("x-dead-letter-exchange", EMAIL_EXCHANGE)
+                .withArgument("x-dead-letter-routing-key", EMAIL_ROUTING_KEY)
+                .withArgument("x-message-ttl", RETRY_DELAY_MS)
                 .build();
     }
 
     @Bean
-    public org.springframework.amqp.core.DirectExchange retryExchange() {
-        return new org.springframework.amqp.core.DirectExchange(RETRY_EXCHANGE);
+    public DirectExchange retryExchange() {
+        return new DirectExchange(RETRY_EXCHANGE);
     }
 
     @Bean
-    public org.springframework.amqp.core.Binding retryBinding(
-            org.springframework.amqp.core.Queue retryQueue, 
-            org.springframework.amqp.core.DirectExchange retryExchange) {
-        return org.springframework.amqp.core.BindingBuilder.bind(retryQueue)
-                .to(retryExchange)
-                .with(RETRY_ROUTING_KEY);
+    public Binding retryBinding(Queue retryQueue, DirectExchange retryExchange) {
+        return BindingBuilder.bind(retryQueue).to(retryExchange).with(RETRY_ROUTING_KEY);
     }
 
     @Bean
-    public org.springframework.amqp.core.Queue emailDlq() {
-        return new org.springframework.amqp.core.Queue(EMAIL_DLQ, true);
+    public Queue emailDlq() {
+        return QueueBuilder.durable(EMAIL_DLQ).build();
     }
 
     @Bean
-    public org.springframework.amqp.core.DirectExchange emailDlx() {
-        return new org.springframework.amqp.core.DirectExchange(EMAIL_DLX);
+    public DirectExchange emailDlx() {
+        return new DirectExchange(EMAIL_DLX);
     }
 
     @Bean
-    public org.springframework.amqp.core.Binding dlqBinding(
-            org.springframework.amqp.core.Queue emailDlq, 
-            org.springframework.amqp.core.DirectExchange emailDlx) {
-        return org.springframework.amqp.core.BindingBuilder.bind(emailDlq)
-                .to(emailDlx)
-                .with(EMAIL_DLQ_ROUTING_KEY);
+    public Binding dlqBinding(Queue emailDlq, DirectExchange emailDlx) {
+        return BindingBuilder.bind(emailDlq).to(emailDlx).with(EMAIL_DLQ_ROUTING_KEY);
     }
 }

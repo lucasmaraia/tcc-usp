@@ -7,7 +7,8 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "email_templates")
+@Table(name = "email_templates",
+        uniqueConstraints = @UniqueConstraint(name = "uk_template_name_user", columnNames = {"name", "user_id"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -19,7 +20,7 @@ public class EmailTemplate {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false)
     private String name;
 
     @Column(nullable = false)

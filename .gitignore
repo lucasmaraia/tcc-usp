@@ -7,13 +7,11 @@ target/
 data/
 *.db
 
+### Local secrets ###
+.env
+
 ### IntelliJ IDEA ###
-.idea/modules.xml
-.idea/jarRepositories.xml
-.idea/compiler.xml
-.idea/libraries/
-.idea/vcs.xml
-.idea/workspace.xml
+.idea/
 *.iws
 *.iml
 *.ipr

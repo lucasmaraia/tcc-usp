@@ -3,32 +3,36 @@ package com.emailservice.infrastructure.service;
 import com.emailservice.domain.exception.EmailSendException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import java.nio.charset.StandardCharsets;
+
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EmailSenderService {
 
     private final JavaMailSender mailSender;
+    private final String fromEmail;
 
-    @Value("${spring.mail.username}")
-    private String fromEmail;
+    public EmailSenderService(JavaMailSender mailSender,
+                              @Value("${spring.mail.username}") String fromEmail) {
+        this.mailSender = mailSender;
+        this.fromEmail = fromEmail;
+    }
 
-    public void sendEmail(String to, String subject, String htmlBody, String textBody) {
+    public void sendEmail(String to, String subject, String htmlBody) {
         try {
             MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, StandardCharsets.UTF_8.name());
 
             helper.setFrom(fromEmail);
             helper.setTo(to);
             helper.setSubject(subject);
-            helper.setText(textBody != null ? textBody : "", htmlBody);
+            helper.setText(htmlBody, true);
 
             mailSender.send(message);
             log.info("Email sent successfully to: {}", to);

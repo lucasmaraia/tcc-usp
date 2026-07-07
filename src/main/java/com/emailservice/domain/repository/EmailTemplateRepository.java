@@ -10,8 +10,8 @@ import java.util.UUID;
 
 @Repository
 public interface EmailTemplateRepository extends JpaRepository<EmailTemplate, UUID> {
-    Optional<EmailTemplate> findByName(String name);
-    List<EmailTemplate> findByUserId(UUID userId);
-    boolean existsByName(String name);
+    Optional<EmailTemplate> findByIdAndUserId(UUID id, UUID userId);
+    Optional<EmailTemplate> findByNameAndUserId(String name, UUID userId);
+    List<EmailTemplate> findByUserIdOrderByCreatedAtDesc(UUID userId);
     boolean existsByNameAndUserId(String name, UUID userId);
 }

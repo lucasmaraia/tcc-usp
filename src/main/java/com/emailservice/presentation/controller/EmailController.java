@@ -8,7 +8,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,25 +31,25 @@ public class EmailController {
     @PostMapping("/send")
     public ResponseEntity<EmailMessageResponse> sendEmail(
             @Valid @RequestBody SendEmailRequest request,
-            @RequestHeader("Authorization") String authHeader) {
-        String token = authHeader.substring(7);
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
         return ResponseEntity.status(HttpStatus.ACCEPTED)
-                .body(sendEmailUseCase.sendEmail(request, token));
+                .body(sendEmailUseCase.sendEmail(request, userDetails.getUsername()));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<EmailMessageResponse>> getMessages(
+            @RequestParam(required = false) EmailMessage.EmailStatus status,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(sendEmailUseCase.getMessages(userDetails.getUsername(), status));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EmailMessageResponse> getMessageById(@PathVariable UUID id) {
-        return ResponseEntity.ok(sendEmailUseCase.getMessageById(id));
-    }
-
-    @GetMapping("/status/{status}")
-    public ResponseEntity<List<EmailMessageResponse>> getMessagesByStatus(@PathVariable String status) {
-        EmailMessage.EmailStatus emailStatus = EmailMessage.EmailStatus.valueOf(status.toUpperCase());
-        return ResponseEntity.ok(sendEmailUseCase.getMessagesByStatus(emailStatus));
-    }
-
-    @GetMapping("/to/{email}")
-    public ResponseEntity<List<EmailMessageResponse>> getMessagesByEmail(@PathVariable String email) {
-        return ResponseEntity.ok(sendEmailUseCase.getMessagesByEmail(email));
+    public ResponseEntity<EmailMessageResponse> getMessageById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails userDetails
+    ) {
+        return ResponseEntity.ok(sendEmailUseCase.getMessageById(id, userDetails.getUsername()));
     }
 }
