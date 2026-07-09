@@ -16,6 +16,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -23,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -131,6 +134,101 @@ class EmailTemplateUseCaseTest {
         templateUseCase.deleteTemplate(templateId, "testuser");
 
         verify(templateRepository).delete(testTemplate);
+    }
+
+    @Test
+    void getTemplateByName_Success() {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByNameAndUserId("Test Template", userId)).thenReturn(Optional.of(testTemplate));
+
+        var result = templateUseCase.getTemplateByName("Test Template", "testuser");
+
+        assertNotNull(result);
+        assertEquals(templateId, result.id());
+    }
+
+    @Test
+    void getTemplateByName_NotFound_ThrowsException() {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByNameAndUserId("Missing", userId)).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                templateUseCase.getTemplateByName("Missing", "testuser")
+        );
+    }
+
+    @Test
+    void getTemplatesByUser_ReturnsAllTemplates() {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByUserIdOrderByCreatedAtDesc(userId)).thenReturn(List.of(testTemplate));
+
+        var result = templateUseCase.getTemplatesByUser("testuser");
+
+        assertEquals(1, result.size());
+        assertEquals("Test Template", result.get(0).name());
+    }
+
+    @Test
+    void getTemplatesByUser_UserNotFound_ThrowsException() {
+        when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
+
+        assertThrows(ResourceNotFoundException.class, () ->
+                templateUseCase.getTemplatesByUser("ghost")
+        );
+    }
+
+    @Test
+    void updateTemplate_Success() {
+        var request = new EmailTemplateRequest("Renamed Template", "New Subject", "<p>Updated</p>");
+
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByIdAndUserId(templateId, userId)).thenReturn(Optional.of(testTemplate));
+        when(templateRepository.existsByNameAndUserId("Renamed Template", userId)).thenReturn(false);
+        when(templateRepository.save(testTemplate)).thenReturn(testTemplate);
+
+        var result = templateUseCase.updateTemplate(templateId, request, "testuser");
+
+        assertEquals("Renamed Template", result.name());
+        assertEquals("New Subject", result.subject());
+        assertEquals("<p>Updated</p>", result.htmlContent());
+    }
+
+    @Test
+    void updateTemplate_SameName_DoesNotCheckDuplicate() {
+        var request = new EmailTemplateRequest("Test Template", "New Subject", "<p>Updated</p>");
+
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByIdAndUserId(templateId, userId)).thenReturn(Optional.of(testTemplate));
+        when(templateRepository.save(testTemplate)).thenReturn(testTemplate);
+
+        var result = templateUseCase.updateTemplate(templateId, request, "testuser");
+
+        assertEquals("New Subject", result.subject());
+        verify(templateRepository, never()).existsByNameAndUserId(any(), any());
+    }
+
+    @Test
+    void updateTemplate_DuplicateNewName_ThrowsException() {
+        var request = new EmailTemplateRequest("Taken Name", "Subject", "Content");
+
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByIdAndUserId(templateId, userId)).thenReturn(Optional.of(testTemplate));
+        when(templateRepository.existsByNameAndUserId("Taken Name", userId)).thenReturn(true);
+
+        assertThrows(BadRequestException.class, () ->
+                templateUseCase.updateTemplate(templateId, request, "testuser")
+        );
+        verify(templateRepository, never()).save(any());
+    }
+
+    @Test
+    void renderPreview_DelegatesToRenderer() {
+        Map<String, Object> variables = Map.of("name", "Ana");
+        when(templateRenderer.render("<p>[[${name}]]</p>", variables)).thenReturn("<p>Ana</p>");
+
+        String result = templateUseCase.renderPreview("<p>[[${name}]]</p>", variables);
+
+        assertEquals("<p>Ana</p>", result);
     }
 
     @Test

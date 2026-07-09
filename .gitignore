@@ -9,6 +9,7 @@ data/
 
 ### Local secrets ###
 .env
+**/application-dev.yml
 
 ### IntelliJ IDEA ###
 .idea/
