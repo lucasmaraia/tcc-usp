@@ -301,6 +301,123 @@
 			]
 		},
 		{
+			"name": "Relatórios",
+			"item": [
+				{
+					"name": "Lista paginada de envios",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/emails?startDate=2026-07-01&endDate=2026-07-08&page=0&size=20",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "emails"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2026-07-01",
+									"description": "Opcional (yyyy-MM-dd). Padrão: 30 dias atrás"
+								},
+								{
+									"key": "endDate",
+									"value": "2026-07-08",
+									"description": "Opcional (yyyy-MM-dd). Padrão: hoje"
+								},
+								{
+									"key": "status",
+									"value": "SENT",
+									"description": "Filtro opcional: PENDING, RETRYING, SENT ou FAILED",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Página (começa em 0)"
+								},
+								{
+									"key": "size",
+									"value": "20",
+									"description": "Itens por página (máx. 100)"
+								}
+							]
+						},
+						"description": "Lista paginada dos envios do usuário no período, do mais recente para o mais antigo. Cada item traz usuário, template, destinatário, status, data de criação e data de envio."
+					},
+					"response": []
+				},
+				{
+					"name": "Resumo de envios do período",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/emails/summary?startDate=2026-07-01&endDate=2026-07-08",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "emails", "summary"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2026-07-01",
+									"description": "Opcional (yyyy-MM-dd). Padrão: 30 dias atrás"
+								},
+								{
+									"key": "endDate",
+									"value": "2026-07-08",
+									"description": "Opcional (yyyy-MM-dd). Padrão: hoje"
+								}
+							]
+						},
+						"description": "Resumo dos envios do usuário no período: total, contagem por status (SENT, FAILED, PENDING, RETRYING) e taxa de sucesso. Sem parâmetros, considera os últimos 30 dias."
+					},
+					"response": []
+				},
+				{
+					"name": "Envios por dia",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/api/reports/emails/daily?startDate=2026-07-01&endDate=2026-07-08",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "reports", "emails", "daily"],
+							"query": [
+								{
+									"key": "startDate",
+									"value": "2026-07-01",
+									"description": "Opcional (yyyy-MM-dd). Padrão: 30 dias atrás"
+								},
+								{
+									"key": "endDate",
+									"value": "2026-07-08",
+									"description": "Opcional (yyyy-MM-dd). Padrão: hoje"
+								}
+							]
+						},
+						"description": "Envios do usuário agrupados por dia (ordem cronológica), com contagem por status em cada dia. Sem parâmetros, considera os últimos 30 dias."
+					},
+					"response": []
+				}
+			]
+		},
+		{
 			"name": "Exemplo completo",
 			"item": [
 				{

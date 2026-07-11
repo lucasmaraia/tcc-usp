@@ -8,6 +8,7 @@ Serviço de envio de e-mails com templates personalizáveis, processamento assí
 - CRUD de templates de e-mail com variáveis (`${nome}`) e pré-visualização ao vivo
 - Envio assíncrono via fila (RabbitMQ) com retry automático (3 tentativas) e dead-letter queue
 - Histórico de envios com status (`PENDING`, `RETRYING`, `SENT`, `FAILED`)
+- Relatórios de envio por usuário e período: resumo com taxa de sucesso e evolução diária
 - Interface web (HTML/CSS/JS separados, em `src/main/resources/static`)
 
 ## Arquitetura
@@ -120,5 +121,66 @@ docker compose up --build
 | POST   | `/api/emails/send`            | Enfileira envio de e-mail (202 Accepted)   |
 | GET    | `/api/emails?status=SENT`     | Lista envios do usuário (filtro opcional)  |
 | GET    | `/api/emails/{id}`            | Consulta status de um envio                |
+| GET    | `/api/reports/emails`         | Lista paginada dos envios do período, com usuário, template e datas |
+| GET    | `/api/reports/emails/summary` | Resumo de envios do período (totais por status e taxa de sucesso) |
+| GET    | `/api/reports/emails/daily`   | Envios agrupados por dia dentro do período |
+
+### Relatórios
+
+Os endpoints de relatório aceitam os parâmetros opcionais `startDate` e `endDate`
+(formato ISO `yyyy-MM-dd`, filtrando pela data de criação do envio). Sem parâmetros, o
+período padrão são os últimos 30 dias. Os dados são sempre escopados ao usuário autenticado.
+
+`GET /api/reports/emails` retorna a lista detalhada e paginada, ordenada do envio mais
+recente para o mais antigo. Parâmetros adicionais: `status` (PENDING, RETRYING, SENT,
+FAILED), `page` (padrão 0) e `size` (padrão 20, máximo 100).
+
+```
+GET /api/reports/emails?startDate=2026-07-01&endDate=2026-07-08&status=SENT&page=0&size=20
+```
+
+```json
+{
+  "content": [
+    {
+      "id": "c87eb389-1fa8-4996-9b06-9c16b3a2aa4c",
+      "username": "lucas",
+      "userEmail": "lucas@example.com",
+      "templateId": "0e2b7c31-8f4e-4d29-9a1f-53a2b8c90d11",
+      "templateName": "boas-vindas",
+      "toEmail": "destinatario@example.com",
+      "subject": "Bem-vindo!",
+      "status": "SENT",
+      "retryCount": 0,
+      "sentAt": "2026-07-08T22:43:05",
+      "createdAt": "2026-07-08T22:42:55"
+    }
+  ],
+  "page": 0,
+  "size": 20,
+  "totalElements": 1,
+  "totalPages": 1
+}
+```
+
+```
+GET /api/reports/emails/summary?startDate=2026-07-01&endDate=2026-07-08
+```
+
+```json
+{
+  "startDate": "2026-07-01",
+  "endDate": "2026-07-08",
+  "total": 6,
+  "sent": 3,
+  "failed": 1,
+  "pending": 1,
+  "retrying": 1,
+  "successRate": 50.0
+}
+```
+
+`GET /api/reports/emails/daily` retorna uma lista com a mesma contagem por status para
+cada dia que teve envios, em ordem cronológica.
 
 Erros seguem o formato *problem detail* (RFC 9457). Uma coleção Postman está disponível em `postman/`.
