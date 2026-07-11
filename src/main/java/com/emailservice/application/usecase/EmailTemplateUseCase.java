@@ -2,6 +2,7 @@ package com.emailservice.application.usecase;
 
 import com.emailservice.application.dto.EmailTemplateRequest;
 import com.emailservice.application.dto.EmailTemplateResponse;
+import com.emailservice.application.dto.PageResponse;
 import com.emailservice.application.port.TemplateRenderer;
 import com.emailservice.domain.entity.EmailTemplate;
 import com.emailservice.domain.entity.User;
@@ -10,16 +11,20 @@ import com.emailservice.domain.exception.ResourceNotFoundException;
 import com.emailservice.domain.repository.EmailTemplateRepository;
 import com.emailservice.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class EmailTemplateUseCase {
+
+    private static final int MAX_PAGE_SIZE = 100;
 
     private final EmailTemplateRepository templateRepository;
     private final UserRepository userRepository;
@@ -54,11 +59,14 @@ public class EmailTemplateUseCase {
         return EmailTemplateResponse.from(template);
     }
 
-    public List<EmailTemplateResponse> getTemplatesByUser(String username) {
+    public PageResponse<EmailTemplateResponse> getTemplatesByUser(String username, String search, int page, int size) {
         User user = findUser(username);
-        return templateRepository.findByUserIdOrderByCreatedAtDesc(user.getId()).stream()
-                .map(EmailTemplateResponse::from)
-                .toList();
+        Pageable pageable = PageRequest.of(Math.max(page, 0),
+                Math.min(Math.max(size, 1), MAX_PAGE_SIZE),
+                Sort.by(Sort.Direction.DESC, "createdAt"));
+        String name = search == null || search.isBlank() ? null : search.trim();
+        return PageResponse.from(templateRepository.searchByUserId(user.getId(), name, pageable)
+                .map(EmailTemplateResponse::from));
     }
 
     public String renderPreview(String htmlContent, Map<String, Object> variables) {

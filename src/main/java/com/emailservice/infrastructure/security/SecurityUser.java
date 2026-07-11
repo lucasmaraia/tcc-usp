@@ -8,10 +8,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
-/**
- * Adapter that exposes the domain {@link User} to Spring Security,
- * keeping the domain entity free of framework concerns.
- */
 public record SecurityUser(User user) implements UserDetails {
 
     @Override

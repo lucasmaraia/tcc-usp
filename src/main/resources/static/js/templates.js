@@ -1,7 +1,3 @@
-/**
- * Templates page: template CRUD with live preview, email sending and send history.
- * All dynamic content is rendered through DOM APIs (textContent) to prevent XSS.
- */
 Auth.requireLogin();
 
 const TEMPLATES_API = '/api/templates';
@@ -12,16 +8,16 @@ const templatesEmpty = document.getElementById('templatesEmpty');
 const messageList = document.getElementById('messageList');
 const messagesEmpty = document.getElementById('messagesEmpty');
 
+const PAGE_SIZE = 10;
+const templatesState = { page: 0, totalPages: 0, search: '' };
+const messagesState = { page: 0, totalPages: 0, status: '', toEmail: '' };
+
 const STATUS_LABELS = {
     PENDING: { label: 'Pendente', className: 'badge-pending' },
     RETRYING: { label: 'Reenviando', className: 'badge-retrying' },
     SENT: { label: 'Enviado', className: 'badge-sent' },
     FAILED: { label: 'Falhou', className: 'badge-failed' }
 };
-
-/* --------------------------------------------------------------------------
-   Bootstrap
-   -------------------------------------------------------------------------- */
 
 document.getElementById('userEmail').textContent = Auth.email();
 document.getElementById('logoutBtn').addEventListener('click', () => Auth.logout());
@@ -37,15 +33,83 @@ document.querySelectorAll('[data-close]').forEach((button) => {
     button.addEventListener('click', () => closeModal(button.dataset.close));
 });
 
+const templateSearchInput = document.getElementById('templateSearch');
+templateSearchInput.addEventListener('input', debounce(() => {
+    templatesState.search = templateSearchInput.value.trim();
+    templatesState.page = 0;
+    loadTemplates();
+}, 300));
+
+document.getElementById('templatesPrev').addEventListener('click', () => changePage(templatesState, -1, loadTemplates));
+document.getElementById('templatesNext').addEventListener('click', () => changePage(templatesState, 1, loadTemplates));
+
+const messageStatusFilter = document.getElementById('messageStatusFilter');
+messageStatusFilter.addEventListener('change', () => {
+    messagesState.status = messageStatusFilter.value;
+    messagesState.page = 0;
+    loadMessages();
+});
+
+const messageRecipientFilter = document.getElementById('messageRecipientFilter');
+messageRecipientFilter.addEventListener('input', debounce(() => {
+    messagesState.toEmail = messageRecipientFilter.value.trim();
+    messagesState.page = 0;
+    loadMessages();
+}, 300));
+
+document.getElementById('messagesPrev').addEventListener('click', () => changePage(messagesState, -1, loadMessages));
+document.getElementById('messagesNext').addEventListener('click', () => changePage(messagesState, 1, loadMessages));
+
+document.getElementById('templatesClearFilters').addEventListener('click', () => {
+    templateSearchInput.value = '';
+    templatesState.search = '';
+    templatesState.page = 0;
+    loadTemplates();
+});
+
+document.getElementById('messagesClearFilters').addEventListener('click', () => {
+    messageStatusFilter.value = '';
+    messageRecipientFilter.value = '';
+    messagesState.status = '';
+    messagesState.toEmail = '';
+    messagesState.page = 0;
+    loadMessages();
+});
+
 loadTemplates();
 loadMessages();
 
-/* --------------------------------------------------------------------------
-   Helpers
-   -------------------------------------------------------------------------- */
-
 function formatDate(value) {
     return value ? new Date(value).toLocaleString('pt-BR') : '—';
+}
+
+function debounce(fn, delayMs) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delayMs);
+    };
+}
+
+function changePage(state, delta, reload) {
+    const next = state.page + delta;
+    if (next < 0 || next >= state.totalPages) {
+        return;
+    }
+    state.page = next;
+    reload();
+}
+
+function renderPagination(prefix, state, data) {
+    state.totalPages = data.totalPages;
+    if (state.page >= data.totalPages && data.totalPages > 0) {
+        state.page = data.totalPages - 1;
+    }
+    document.getElementById(prefix + 'Pagination').hidden = data.totalPages <= 1;
+    document.getElementById(prefix + 'PageInfo').textContent =
+        `Página ${data.page + 1} de ${data.totalPages} — ${data.totalElements} registro(s)`;
+    document.getElementById(prefix + 'Prev').disabled = data.page <= 0;
+    document.getElementById(prefix + 'Next').disabled = data.page >= data.totalPages - 1;
 }
 
 function extractVariables(html) {
@@ -91,17 +155,24 @@ function actionButton(label, className, handler) {
     return button;
 }
 
-/* --------------------------------------------------------------------------
-   Templates
-   -------------------------------------------------------------------------- */
-
 async function loadTemplates() {
     try {
-        const response = await apiFetch(TEMPLATES_API);
-        const templates = await response.json();
+        const params = new URLSearchParams({ page: templatesState.page, size: PAGE_SIZE });
+        if (templatesState.search) {
+            params.set('search', templatesState.search);
+        }
+        const response = await apiFetch(`${TEMPLATES_API}?${params}`);
+        const data = await response.json();
+        const templates = data.content;
 
         templateList.replaceChildren();
         templatesEmpty.hidden = templates.length > 0;
+        document.getElementById('templatesEmptyText').textContent = templatesState.search
+            ? 'Nenhum template encontrado para a busca.'
+            : 'Nenhum template ainda. Crie o primeiro!';
+        document.getElementById('emptyNewTemplateBtn').hidden = Boolean(templatesState.search);
+        document.getElementById('templatesClearFilters').hidden = !templatesState.search;
+        renderPagination('templates', templatesState, data);
 
         for (const template of templates) {
             const row = document.createElement('tr');
@@ -228,22 +299,80 @@ async function deleteTemplate(template) {
     try {
         await apiFetch(`${TEMPLATES_API}/${template.id}`, { method: 'DELETE' });
         showToast('Template excluído', 'success');
+        if (templateList.children.length === 1 && templatesState.page > 0) {
+            templatesState.page -= 1;
+        }
         await loadTemplates();
     } catch (error) {
         showToast(error.message, 'error');
     }
 }
 
-/* --------------------------------------------------------------------------
-   Sending emails
-   -------------------------------------------------------------------------- */
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_TOTAL_BYTES = 10 * 1024 * 1024;
 
 function openSendModal(template) {
     document.getElementById('sendTemplateId').value = template.id;
     document.getElementById('toEmail').value = '';
     document.getElementById('sendVars').value =
         JSON.stringify(extractVariables(template.htmlContent), null, 2);
+    document.getElementById('sendAttachments').value = '';
+    renderAttachmentList();
     openModal('sendModal');
+}
+
+document.getElementById('sendAttachments').addEventListener('change', renderAttachmentList);
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) {
+        return bytes + ' B';
+    }
+    if (bytes < 1024 * 1024) {
+        return (bytes / 1024).toFixed(1) + ' KB';
+    }
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+function renderAttachmentList() {
+    const files = Array.from(document.getElementById('sendAttachments').files);
+    const list = document.getElementById('attachmentList');
+
+    list.replaceChildren();
+    list.hidden = files.length === 0;
+
+    for (const file of files) {
+        const item = document.createElement('li');
+        item.textContent = `${file.name} (${formatFileSize(file.size)})`;
+        list.appendChild(item);
+    }
+}
+
+function readFileAsBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = () => reject(new Error(`Falha ao ler o arquivo "${file.name}"`));
+        reader.readAsDataURL(file);
+    });
+}
+
+async function collectAttachments() {
+    const files = Array.from(document.getElementById('sendAttachments').files);
+    if (files.length === 0) {
+        return [];
+    }
+    if (files.length > MAX_ATTACHMENTS) {
+        throw new Error(`Máximo de ${MAX_ATTACHMENTS} anexos por e-mail`);
+    }
+    const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+    if (totalBytes > MAX_ATTACHMENT_TOTAL_BYTES) {
+        throw new Error('Os anexos ultrapassam o limite total de 10 MB');
+    }
+    return Promise.all(files.map(async (file) => ({
+        filename: file.name,
+        contentType: file.type || 'application/octet-stream',
+        base64Content: await readFileAsBase64(file)
+    })));
 }
 
 document.getElementById('sendForm').addEventListener('submit', async (event) => {
@@ -258,16 +387,19 @@ document.getElementById('sendForm').addEventListener('submit', async (event) => 
 
     sendBtn.disabled = true;
     try {
+        const attachments = await collectAttachments();
         await apiFetch(EMAILS_API + '/send', {
             method: 'POST',
             body: JSON.stringify({
                 templateId: document.getElementById('sendTemplateId').value,
                 toEmail: document.getElementById('toEmail').value.trim(),
-                variables
+                variables,
+                attachments
             })
         });
         showToast('E-mail enfileirado para envio', 'success');
         closeModal('sendModal');
+        messagesState.page = 0;
         await loadMessages();
     } catch (error) {
         showToast(error.message, 'error');
@@ -276,17 +408,28 @@ document.getElementById('sendForm').addEventListener('submit', async (event) => 
     }
 });
 
-/* --------------------------------------------------------------------------
-   Send history
-   -------------------------------------------------------------------------- */
-
 async function loadMessages() {
     try {
-        const response = await apiFetch(EMAILS_API);
-        const messages = await response.json();
+        const params = new URLSearchParams({ page: messagesState.page, size: PAGE_SIZE });
+        if (messagesState.status) {
+            params.set('status', messagesState.status);
+        }
+        if (messagesState.toEmail) {
+            params.set('toEmail', messagesState.toEmail);
+        }
+        const response = await apiFetch(`${EMAILS_API}?${params}`);
+        const data = await response.json();
+        const messages = data.content;
 
         messageList.replaceChildren();
         messagesEmpty.hidden = messages.length > 0;
+        document.getElementById('messagesEmptyText').textContent =
+            messagesState.status || messagesState.toEmail
+                ? 'Nenhum envio encontrado com os filtros aplicados.'
+                : 'Nenhum e-mail enviado ainda.';
+        document.getElementById('messagesClearFilters').hidden =
+            !(messagesState.status || messagesState.toEmail);
+        renderPagination('messages', messagesState, data);
 
         for (const message of messages) {
             const row = document.createElement('tr');
@@ -310,13 +453,16 @@ async function loadMessages() {
                 statusCell.appendChild(errorInfo);
             }
 
+            const attachmentsCell = document.createElement('td');
+            attachmentsCell.textContent = message.attachmentNames || '—';
+
             const retryCell = document.createElement('td');
             retryCell.textContent = String(message.retryCount);
 
             const sentCell = document.createElement('td');
             sentCell.textContent = formatDate(message.sentAt);
 
-            row.append(toCell, templateCell, statusCell, retryCell, sentCell);
+            row.append(toCell, templateCell, statusCell, attachmentsCell, retryCell, sentCell);
             messageList.appendChild(row);
         }
     } catch (error) {

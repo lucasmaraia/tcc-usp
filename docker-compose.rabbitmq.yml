@@ -1,15 +1,10 @@
-# RabbitMQ standalone para desenvolvimento local.
-# Subir:  docker compose -f docker-compose.rabbitmq.yml up -d
-# Parar:  docker compose -f docker-compose.rabbitmq.yml down
-# Management UI: http://localhost:15672 (guest/guest)
-
 services:
   rabbitmq:
     image: rabbitmq:4.1-management
     container_name: email-service-rabbitmq-dev
     ports:
-      - "5672:5672"   # AMQP protocol
-      - "15672:15672" # Management UI
+      - "5672:5672"
+      - "15672:15672"
     environment:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-guest}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-guest}

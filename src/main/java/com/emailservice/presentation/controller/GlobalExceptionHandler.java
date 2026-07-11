@@ -16,9 +16,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Translates exceptions into RFC 9457 problem-detail responses.
- */
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {

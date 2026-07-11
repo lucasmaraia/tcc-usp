@@ -56,10 +56,12 @@ com.emailservice
 # Sobe apenas o RabbitMQ
 docker compose up -d rabbitmq
 
-# Configura as credenciais SMTP (exemplo com Gmail + senha de app)
+# Configura as credenciais SMTP e um segredo JWT de desenvolvimento
+# (ou use um application-dev.yml local com SPRING_PROFILES_ACTIVE=dev)
 # PowerShell: $env:MAIL_USERNAME = "seu-email@gmail.com"
 export MAIL_USERNAME=seu-email@gmail.com
 export MAIL_PASSWORD=sua-senha-de-app
+export JWT_SECRET=<base64 de pelo menos 48 bytes aleatórios>
 
 ./mvnw spring-boot:run
 ```
@@ -92,18 +94,49 @@ docker compose up --build
 ./mvnw test
 ```
 
+## Banco de dados (multi-driver)
+
+A aplicação embarca os drivers JDBC de **H2, MySQL, PostgreSQL, SQL Server e
+MariaDB**. O banco é escolhido apenas por variáveis de ambiente — sem recompilar.
+O driver é detectado automaticamente a partir da `DB_URL`; o dialeto do Hibernate
+também é resolvido automaticamente.
+
+```env
+# MySQL
+DB_URL=jdbc:mysql://host:3306/emaildb
+
+# PostgreSQL
+DB_URL=jdbc:postgresql://host:5432/emaildb
+
+# SQL Server
+DB_URL=jdbc:sqlserver://host:1433;databaseName=emaildb;encrypt=true;trustServerCertificate=true
+
+# MariaDB
+DB_URL=jdbc:mariadb://host:3306/emaildb
+
+DB_USERNAME=usuario
+DB_PASSWORD=senha
+```
+
+Sem `DB_URL` definida, a aplicação usa H2 em arquivo (`./data/emaildb`).
+
 ## Variáveis de ambiente
 
-| Variável           | Padrão           | Descrição                                                 |
-|--------------------|------------------|-----------------------------------------------------------|
-| `JWT_SECRET`       | (somente dev)    | Segredo Base64 para assinar tokens (obrigatório em prod)  |
-| `JWT_EXPIRATION`   | `3600000`        | Validade do token em ms                                   |
-| `MAIL_HOST`        | `smtp.gmail.com` | Servidor SMTP                                             |
-| `MAIL_PORT`        | `587`            | Porta SMTP (STARTTLS)                                     |
-| `MAIL_USERNAME`    | —                | Usuário SMTP (obrigatório para envio)                     |
-| `MAIL_PASSWORD`    | —                | Senha SMTP (obrigatório para envio)                       |
-| `RABBITMQ_HOST`    | `localhost`      | Host do broker                                            |
-| `RABBITMQ_ENABLED` | `true`           | Desativa a integração com o broker se `false`             |
+| Variável           | Padrão              | Descrição                                                  |
+|--------------------|---------------------|------------------------------------------------------------|
+| `DB_URL`           | H2 em arquivo       | URL JDBC do banco (MySQL, PostgreSQL, SQL Server, MariaDB) |
+| `DB_DRIVER`        | (auto pela URL)     | Força uma classe de driver JDBC específica                 |
+| `DB_USERNAME`      | `sa`                | Usuário do banco                                           |
+| `DB_PASSWORD`      | (vazio)             | Senha do banco                                             |
+| `JPA_DDL_AUTO`     | `update`            | Estratégia de schema do Hibernate (`validate` em produção) |
+| `JWT_SECRET`       | —                   | Segredo Base64 para assinar tokens (obrigatório)           |
+| `JWT_EXPIRATION`   | `3600000`           | Validade do token em ms                                    |
+| `MAIL_HOST`        | `smtp.gmail.com`    | Servidor SMTP                                              |
+| `MAIL_PORT`        | `587`               | Porta SMTP (STARTTLS)                                      |
+| `MAIL_USERNAME`    | —                   | Usuário SMTP (obrigatório)                                 |
+| `MAIL_PASSWORD`    | —                   | Senha SMTP (obrigatório)                                   |
+| `RABBITMQ_HOST`    | `localhost`         | Host do broker                                             |
+| `RABBITMQ_ENABLED` | `true`              | Desativa a integração com o broker se `false`              |
 
 ## API
 
@@ -111,7 +144,7 @@ docker compose up --build
 |--------|-------------------------------|--------------------------------------------|
 | POST   | `/api/auth/register`          | Cria usuário e retorna token               |
 | POST   | `/api/auth/login`             | Autentica e retorna token                  |
-| GET    | `/api/templates`              | Lista templates do usuário                 |
+| GET    | `/api/templates`              | Lista paginada de templates (`search`, `page`, `size`) |
 | POST   | `/api/templates`              | Cria template                              |
 | GET    | `/api/templates/{id}`         | Busca template por ID                      |
 | GET    | `/api/templates/name/{name}`  | Busca template por nome                    |
@@ -119,11 +152,32 @@ docker compose up --build
 | DELETE | `/api/templates/{id}`         | Remove template                            |
 | POST   | `/api/templates/preview`      | Renderiza HTML com variáveis de teste      |
 | POST   | `/api/emails/send`            | Enfileira envio de e-mail (202 Accepted)   |
-| GET    | `/api/emails?status=SENT`     | Lista envios do usuário (filtro opcional)  |
+| GET    | `/api/emails`                 | Lista paginada de envios (`status`, `toEmail`, `page`, `size`) |
 | GET    | `/api/emails/{id}`            | Consulta status de um envio                |
 | GET    | `/api/reports/emails`         | Lista paginada dos envios do período, com usuário, template e datas |
 | GET    | `/api/reports/emails/summary` | Resumo de envios do período (totais por status e taxa de sucesso) |
 | GET    | `/api/reports/emails/daily`   | Envios agrupados por dia dentro do período |
+
+### Anexos
+
+`POST /api/emails/send` aceita o campo opcional `attachments`: uma lista de até 5 arquivos
+(máximo de 10 MB no total), com o conteúdo codificado em Base64. Os anexos trafegam pela
+fila junto com a mensagem e são adicionados ao e-mail no momento do envio SMTP.
+
+```json
+{
+  "templateId": "0e2b7c31-8f4e-4d29-9a1f-53a2b8c90d11",
+  "toEmail": "destinatario@example.com",
+  "variables": { "nome": "Ana" },
+  "attachments": [
+    {
+      "filename": "relatorio.pdf",
+      "contentType": "application/pdf",
+      "base64Content": "JVBERi0xLjQK..."
+    }
+  ]
+}
+```
 
 ### Relatórios
 

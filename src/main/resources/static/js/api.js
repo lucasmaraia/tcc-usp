@@ -1,7 +1,3 @@
-/**
- * Shared API client: authentication storage and a fetch wrapper that
- * understands the backend's RFC 9457 problem-detail error responses.
- */
 const Auth = {
     save(data) {
         localStorage.setItem('token', data.token);
@@ -35,11 +31,6 @@ const Auth = {
     }
 };
 
-/**
- * Performs a fetch with JSON headers and the Bearer token (when present).
- * Throws an Error with a readable message on non-2xx responses.
- * Redirects to the login page when the session is no longer valid.
- */
 async function apiFetch(url, options = {}) {
     const headers = { 'Content-Type': 'application/json', ...options.headers };
     if (Auth.token()) {
@@ -59,7 +50,6 @@ async function apiFetch(url, options = {}) {
             const problem = await response.json();
             message = problem.detail || problem.message || message;
         } catch (ignored) {
-            // Non-JSON error body: keep the generic message.
         }
         throw new Error(message);
     }

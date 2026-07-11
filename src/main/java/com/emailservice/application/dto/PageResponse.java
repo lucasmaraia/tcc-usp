@@ -4,9 +4,6 @@ import org.springframework.data.domain.Page;
 
 import java.util.List;
 
-/**
- * Stable pagination envelope, independent of Spring Data's internal Page serialization.
- */
 public record PageResponse<T>(
         List<T> content,
         int page,

@@ -43,6 +43,9 @@ public class EmailMessage {
     @Column(name = "variables_json", columnDefinition = "TEXT")
     private String variablesJson;
 
+    @Column(name = "attachment_names", columnDefinition = "TEXT")
+    private String attachmentNames;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EmailStatus status;

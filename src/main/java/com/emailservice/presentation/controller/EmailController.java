@@ -1,6 +1,7 @@
 package com.emailservice.presentation.controller;
 
 import com.emailservice.application.dto.EmailMessageResponse;
+import com.emailservice.application.dto.PageResponse;
 import com.emailservice.application.dto.SendEmailRequest;
 import com.emailservice.application.usecase.SendEmailUseCase;
 import com.emailservice.domain.entity.EmailMessage;
@@ -18,7 +19,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -38,11 +38,14 @@ public class EmailController {
     }
 
     @GetMapping
-    public ResponseEntity<List<EmailMessageResponse>> getMessages(
+    public ResponseEntity<PageResponse<EmailMessageResponse>> getMessages(
             @RequestParam(required = false) EmailMessage.EmailStatus status,
+            @RequestParam(required = false) String toEmail,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        return ResponseEntity.ok(sendEmailUseCase.getMessages(userDetails.getUsername(), status));
+        return ResponseEntity.ok(sendEmailUseCase.getMessages(userDetails.getUsername(), status, toEmail, page, size));
     }
 
     @GetMapping("/{id}")

@@ -12,9 +12,13 @@ import com.emailservice.domain.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +29,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -158,14 +164,44 @@ class EmailTemplateUseCaseTest {
     }
 
     @Test
-    void getTemplatesByUser_ReturnsAllTemplates() {
+    void getTemplatesByUser_ReturnsPagedTemplates() {
         when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
-        when(templateRepository.findByUserIdOrderByCreatedAtDesc(userId)).thenReturn(List.of(testTemplate));
+        when(templateRepository.searchByUserId(eq(userId), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(testTemplate), PageRequest.of(0, 10), 1));
 
-        var result = templateUseCase.getTemplatesByUser("testuser");
+        var result = templateUseCase.getTemplatesByUser("testuser", null, 0, 10);
 
-        assertEquals(1, result.size());
-        assertEquals("Test Template", result.get(0).name());
+        assertEquals(1, result.content().size());
+        assertEquals("Test Template", result.content().get(0).name());
+        assertEquals(1, result.totalElements());
+        assertEquals(1, result.totalPages());
+        assertEquals(0, result.page());
+    }
+
+    @Test
+    void getTemplatesByUser_TrimsSearchAndClampsPagination() {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        when(templateRepository.searchByUserId(eq(userId), eq("welcome"), pageableCaptor.capture()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        templateUseCase.getTemplatesByUser("testuser", "  welcome  ", -3, 500);
+
+        Pageable pageable = pageableCaptor.getValue();
+        assertEquals(0, pageable.getPageNumber());
+        assertEquals(100, pageable.getPageSize());
+    }
+
+    @Test
+    void getTemplatesByUser_BlankSearch_QueriesWithoutFilter() {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.searchByUserId(eq(userId), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        var result = templateUseCase.getTemplatesByUser("testuser", "   ", 0, 10);
+
+        assertEquals(0, result.totalElements());
+        verify(templateRepository).searchByUserId(eq(userId), isNull(), any(Pageable.class));
     }
 
     @Test
@@ -173,7 +209,7 @@ class EmailTemplateUseCaseTest {
         when(userRepository.findByUsername("ghost")).thenReturn(Optional.empty());
 
         assertThrows(ResourceNotFoundException.class, () ->
-                templateUseCase.getTemplatesByUser("ghost")
+                templateUseCase.getTemplatesByUser("ghost", null, 0, 10)
         );
     }
 

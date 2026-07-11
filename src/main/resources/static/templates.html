@@ -24,7 +24,6 @@
     </header>
 
     <main class="container">
-        <!-- Templates -->
         <section class="card">
             <div class="card-header">
                 <div>
@@ -32,6 +31,10 @@
                     <p class="card-subtitle">Crie templates com variáveis como <code>${nome}</code> e envie e-mails personalizados.</p>
                 </div>
                 <button class="btn btn-primary" id="newTemplateBtn" type="button">+ Novo template</button>
+            </div>
+            <div class="card-toolbar">
+                <input type="search" id="templateSearch" class="form-control" placeholder="Buscar template por nome...">
+                <button type="button" class="btn btn-ghost btn-sm" id="templatesClearFilters" hidden>Limpar filtros</button>
             </div>
             <div class="table-wrapper">
                 <table>
@@ -48,12 +51,16 @@
             </div>
             <div id="templatesEmpty" class="empty-state" hidden>
                 <div class="empty-icon">📄</div>
-                <p>Nenhum template ainda. Crie o primeiro!</p>
+                <p id="templatesEmptyText">Nenhum template ainda. Crie o primeiro!</p>
                 <button class="btn btn-primary" id="emptyNewTemplateBtn" type="button">+ Novo template</button>
+            </div>
+            <div class="pagination" id="templatesPagination" hidden>
+                <button type="button" class="btn btn-outline btn-sm" id="templatesPrev">&lsaquo; Anterior</button>
+                <span class="pagination-info" id="templatesPageInfo"></span>
+                <button type="button" class="btn btn-outline btn-sm" id="templatesNext">Próxima &rsaquo;</button>
             </div>
         </section>
 
-        <!-- Sent messages -->
         <section class="card">
             <div class="card-header">
                 <div>
@@ -62,6 +69,17 @@
                 </div>
                 <button class="btn btn-outline btn-sm" id="refreshMessagesBtn" type="button">Atualizar</button>
             </div>
+            <div class="card-toolbar">
+                <select id="messageStatusFilter" class="form-control">
+                    <option value="">Todos os status</option>
+                    <option value="PENDING">Pendente</option>
+                    <option value="RETRYING">Reenviando</option>
+                    <option value="SENT">Enviado</option>
+                    <option value="FAILED">Falhou</option>
+                </select>
+                <input type="search" id="messageRecipientFilter" class="form-control" placeholder="Filtrar por destinatário...">
+                <button type="button" class="btn btn-ghost btn-sm" id="messagesClearFilters" hidden>Limpar filtros</button>
+            </div>
             <div class="table-wrapper">
                 <table>
                     <thead>
@@ -69,6 +87,7 @@
                             <th>Destinatário</th>
                             <th>Template</th>
                             <th>Status</th>
+                            <th>Anexos</th>
                             <th>Tentativas</th>
                             <th>Enviado em</th>
                         </tr>
@@ -78,12 +97,16 @@
             </div>
             <div id="messagesEmpty" class="empty-state" hidden>
                 <div class="empty-icon">📭</div>
-                <p>Nenhum e-mail enviado ainda.</p>
+                <p id="messagesEmptyText">Nenhum e-mail enviado ainda.</p>
+            </div>
+            <div class="pagination" id="messagesPagination" hidden>
+                <button type="button" class="btn btn-outline btn-sm" id="messagesPrev">&lsaquo; Anterior</button>
+                <span class="pagination-info" id="messagesPageInfo"></span>
+                <button type="button" class="btn btn-outline btn-sm" id="messagesNext">Próxima &rsaquo;</button>
             </div>
         </section>
     </main>
 
-    <!-- Template editor modal -->
     <div id="templateModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-content">
             <div class="modal-header">
@@ -132,7 +155,6 @@
         </div>
     </div>
 
-    <!-- Send email modal -->
     <div id="sendModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="sendModalTitle">
         <div class="modal-content modal-sm">
             <div class="modal-header">
@@ -150,6 +172,12 @@
                         <label for="sendVars">Variáveis (JSON)</label>
                         <textarea id="sendVars" class="form-control" rows="6" style="font-family:var(--font-mono);font-size:0.82rem"></textarea>
                         <span class="hint">Preencha os valores das variáveis detectadas no template.</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="sendAttachments">Anexos (opcional)</label>
+                        <input type="file" id="sendAttachments" class="form-control" multiple>
+                        <span class="hint">Até 5 arquivos, máximo de 10 MB no total.</span>
+                        <ul id="attachmentList" class="attachment-list" hidden></ul>
                     </div>
                 </div>
                 <div class="modal-footer">

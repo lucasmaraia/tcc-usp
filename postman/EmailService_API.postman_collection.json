@@ -25,8 +25,14 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/auth/register",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "auth", "register"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"register"
+							]
 						},
 						"description": "Registra um novo usuário no sistema"
 					},
@@ -59,8 +65,14 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/auth/login",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "auth", "login"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"auth",
+								"login"
+							]
 						},
 						"description": "Faz login e retorna token JWT"
 					},
@@ -93,8 +105,13 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/templates",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "templates"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"templates"
+							]
 						},
 						"description": "Cria um novo template de email com variáveis Thymeleaf"
 					},
@@ -112,18 +129,34 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/templates?activeOnly=false",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "templates"],
+							"raw": "{{baseUrl}}/api/templates?page=0&size=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"templates"
+							],
 							"query": [
 								{
-									"key": "activeOnly",
-									"value": "false",
-									"description": "true para listar apenas ativos"
+									"key": "search",
+									"value": "boas-vindas",
+									"description": "Filtro opcional por nome (contém, sem diferenciar maiúsculas)",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Página (começa em 0)"
+								},
+								{
+									"key": "size",
+									"value": "10",
+									"description": "Itens por página (máx. 100)"
 								}
 							]
 						},
-						"description": "Lista todos os templates do usuário logado"
+						"description": "Lista paginada dos templates do usuário logado (mais recentes primeiro). Retorna content, page, size, totalElements e totalPages. Filtro opcional 'search' por nome."
 					},
 					"response": []
 				},
@@ -140,8 +173,14 @@
 						],
 						"url": {
 							"raw": "{{baseUrl}}/api/templates/:id",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "templates", ":id"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"templates",
+								":id"
+							]
 						},
 						"description": "Busca um template específico pelo ID"
 					},
@@ -160,8 +199,15 @@
 						],
 						"url": {
 							"raw": "{{baseUrl}}/api/templates/name/:name",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "templates", "name", ":name"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"templates",
+								"name",
+								":name"
+							]
 						},
 						"description": "Busca um template específico pelo nome"
 					},
@@ -189,8 +235,14 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/templates/:id",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "templates", ":id"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"templates",
+								":id"
+							]
 						},
 						"description": "Atualiza um template existente"
 					},
@@ -209,8 +261,14 @@
 						],
 						"url": {
 							"raw": "{{baseUrl}}/api/templates/:id",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "templates", ":id"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"templates",
+								":id"
+							]
 						},
 						"description": "Deleta um template"
 					},
@@ -243,10 +301,51 @@
 						},
 						"url": {
 							"raw": "{{baseUrl}}/api/emails/send",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "emails", "send"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"emails",
+								"send"
+							]
 						},
-						"description": "Envia um email usando um template cadastrado. As variáveis são processadas pelo Thymeleaf."
+						"description": "Envia um email usando um template cadastrado. As variáveis são processadas pelo Thymeleaf. O campo opcional 'attachments' aceita até 5 arquivos em Base64 (máx. 10 MB no total)."
+					},
+					"response": []
+				},
+				{
+					"name": "Enviar email com anexo",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"templateId\": \"SUBSTITUIR_PELO_ID_DO_TEMPLATE\",\n    \"toEmail\": \"destinatario@example.com\",\n    \"variables\": {\n        \"name\": \"João Silva\",\n        \"email\": \"joao@exemplo.com\"\n    },\n    \"attachments\": [\n        {\n            \"filename\": \"anexo-teste.txt\",\n            \"contentType\": \"text/plain\",\n            \"base64Content\": \"QW5leG8gZGUgdGVzdGUgZG8gRW1haWwgU2VydmljZQ==\"\n        }\n    ]\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/emails/send",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"emails",
+								"send"
+							]
+						},
+						"description": "Envia um email com anexos. Cada anexo tem 'filename', 'contentType' (opcional, padrão application/octet-stream) e 'base64Content' (conteúdo do arquivo em Base64). Limites: 5 anexos e 10 MB no total. O exemplo anexa um .txt com o texto 'Anexo de teste do Email Service'."
 					},
 					"response": []
 				},
@@ -263,8 +362,14 @@
 						],
 						"url": {
 							"raw": "{{baseUrl}}/api/emails/:id",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "emails", ":id"]
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"emails",
+								":id"
+							]
 						},
 						"description": "Busca status de um email enviado pelo ID"
 					},
@@ -282,19 +387,40 @@
 							}
 						],
 						"url": {
-							"raw": "{{baseUrl}}/api/emails?status=SENT",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "emails"],
+							"raw": "{{baseUrl}}/api/emails?page=0&size=10",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"emails"
+							],
 							"query": [
 								{
 									"key": "status",
 									"value": "SENT",
 									"description": "Filtro opcional: PENDING, RETRYING, SENT ou FAILED",
 									"disabled": true
+								},
+								{
+									"key": "toEmail",
+									"value": "destinatario@example.com",
+									"description": "Filtro opcional por destinatário (contém, sem diferenciar maiúsculas)",
+									"disabled": true
+								},
+								{
+									"key": "page",
+									"value": "0",
+									"description": "Página (começa em 0)"
+								},
+								{
+									"key": "size",
+									"value": "10",
+									"description": "Itens por página (máx. 100)"
 								}
 							]
 						},
-						"description": "Lista os emails do usuário logado, com filtro opcional por status (PENDING, RETRYING, SENT, FAILED)"
+						"description": "Lista paginada dos emails do usuário logado (mais recentes primeiro), com filtros opcionais por status e destinatário. Retorna content, page, size, totalElements e totalPages."
 					},
 					"response": []
 				}
@@ -316,8 +442,14 @@
 						],
 						"url": {
 							"raw": "{{baseUrl}}/api/reports/emails?startDate=2026-07-01&endDate=2026-07-08&page=0&size=20",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "reports", "emails"],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reports",
+								"emails"
+							],
 							"query": [
 								{
 									"key": "startDate",
@@ -364,8 +496,15 @@
 						],
 						"url": {
 							"raw": "{{baseUrl}}/api/reports/emails/summary?startDate=2026-07-01&endDate=2026-07-08",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "reports", "emails", "summary"],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reports",
+								"emails",
+								"summary"
+							],
 							"query": [
 								{
 									"key": "startDate",
@@ -396,8 +535,15 @@
 						],
 						"url": {
 							"raw": "{{baseUrl}}/api/reports/emails/daily?startDate=2026-07-01&endDate=2026-07-08",
-							"host": ["{{baseUrl}}"],
-							"path": ["api", "reports", "emails", "daily"],
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"reports",
+								"emails",
+								"daily"
+							],
 							"query": [
 								{
 									"key": "startDate",
@@ -455,8 +601,14 @@
 								},
 								"url": {
 									"raw": "{{baseUrl}}/api/auth/register",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "auth", "register"]
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"auth",
+										"register"
+									]
 								}
 							},
 							"response": []
@@ -499,8 +651,13 @@
 								},
 								"url": {
 									"raw": "{{baseUrl}}/api/templates",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "templates"]
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"templates"
+									]
 								}
 							},
 							"response": []
@@ -527,8 +684,14 @@
 								},
 								"url": {
 									"raw": "{{baseUrl}}/api/emails/send",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "emails", "send"]
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"emails",
+										"send"
+									]
 								}
 							},
 							"response": []
@@ -546,8 +709,13 @@
 								],
 								"url": {
 									"raw": "{{baseUrl}}/api/emails?status=SENT",
-									"host": ["{{baseUrl}}"],
-									"path": ["api", "emails"],
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"api",
+										"emails"
+									],
 									"query": [
 										{
 											"key": "status",

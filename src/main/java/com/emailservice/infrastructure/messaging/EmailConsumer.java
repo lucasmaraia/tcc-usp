@@ -36,7 +36,8 @@ public class EmailConsumer {
 
         try {
             String htmlBody = templateRenderer.render(emailMessage.htmlContent(), emailMessage.variables());
-            emailSenderService.sendEmail(emailMessage.toEmail(), emailMessage.subject(), htmlBody);
+            emailSenderService.sendEmail(emailMessage.toEmail(), emailMessage.subject(), htmlBody,
+                    emailMessage.attachments());
             sendEmailUseCase.markSent(emailMessage.id(), htmlBody);
             log.info("Email {} sent to {}", emailMessage.id(), emailMessage.toEmail());
         } catch (Exception e) {

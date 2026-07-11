@@ -1,5 +1,6 @@
 package com.emailservice;
 
+import com.emailservice.application.dto.EmailAttachmentDto;
 import com.emailservice.application.dto.EmailMessageDto;
 import com.emailservice.application.dto.SendEmailRequest;
 import com.emailservice.application.port.EmailQueueGateway;
@@ -7,6 +8,7 @@ import com.emailservice.application.usecase.SendEmailUseCase;
 import com.emailservice.domain.entity.EmailMessage;
 import com.emailservice.domain.entity.EmailTemplate;
 import com.emailservice.domain.entity.User;
+import com.emailservice.domain.exception.BadRequestException;
 import com.emailservice.domain.exception.ResourceNotFoundException;
 import com.emailservice.domain.repository.EmailMessageRepository;
 import com.emailservice.domain.repository.EmailTemplateRepository;
@@ -17,8 +19,14 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -30,6 +38,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -117,6 +127,65 @@ class SendEmailUseCaseTest {
     }
 
     @Test
+    void sendEmail_WithAttachments_SanitizesFilenamesAndQueuesThem() {
+        String base64 = Base64.getEncoder().encodeToString("conteudo".getBytes(StandardCharsets.UTF_8));
+        var attachments = List.of(
+                new EmailAttachmentDto("relatorio.pdf", "application/pdf", base64),
+                new EmailAttachmentDto("../etc/passwd", "text/plain", base64));
+        var request = new SendEmailRequest(templateId, "dest@example.com", Map.of(), attachments);
+
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByIdAndUserId(templateId, userId)).thenReturn(Optional.of(testTemplate));
+        when(messageRepository.save(any(EmailMessage.class))).thenAnswer(invocation -> {
+            EmailMessage saved = invocation.getArgument(0);
+            saved.setId(messageId);
+            return saved;
+        });
+
+        var result = sendEmailUseCase.sendEmail(request, "testuser");
+
+        assertEquals("relatorio.pdf, .._etc_passwd", result.attachmentNames());
+
+        ArgumentCaptor<EmailMessageDto> dtoCaptor = ArgumentCaptor.forClass(EmailMessageDto.class);
+        verify(emailQueueGateway).sendEmail(dtoCaptor.capture());
+        List<EmailAttachmentDto> queued = dtoCaptor.getValue().attachments();
+        assertEquals(2, queued.size());
+        assertEquals("relatorio.pdf", queued.get(0).filename());
+        assertEquals(".._etc_passwd", queued.get(1).filename());
+        assertEquals(base64, queued.get(0).base64Content());
+    }
+
+    @Test
+    void sendEmail_InvalidBase64Attachment_ThrowsBadRequest() {
+        var attachments = List.of(new EmailAttachmentDto("arquivo.txt", "text/plain", "not-valid-base64!!!"));
+        var request = new SendEmailRequest(templateId, "dest@example.com", Map.of(), attachments);
+
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByIdAndUserId(templateId, userId)).thenReturn(Optional.of(testTemplate));
+
+        assertThrows(BadRequestException.class, () ->
+                sendEmailUseCase.sendEmail(request, "testuser")
+        );
+        verify(messageRepository, never()).save(any());
+        verify(emailQueueGateway, never()).sendEmail(any());
+    }
+
+    @Test
+    void sendEmail_AttachmentsOverSizeLimit_ThrowsBadRequest() {
+        String bigBase64 = Base64.getEncoder().encodeToString(new byte[11 * 1024 * 1024]);
+        var attachments = List.of(new EmailAttachmentDto("grande.bin", "application/octet-stream", bigBase64));
+        var request = new SendEmailRequest(templateId, "dest@example.com", Map.of(), attachments);
+
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        when(templateRepository.findByIdAndUserId(templateId, userId)).thenReturn(Optional.of(testTemplate));
+
+        assertThrows(BadRequestException.class, () ->
+                sendEmailUseCase.sendEmail(request, "testuser")
+        );
+        verify(emailQueueGateway, never()).sendEmail(any());
+    }
+
+    @Test
     void sendEmail_UserNotFound_ThrowsException() {
         var request = new SendEmailRequest(templateId, "dest@example.com", Map.of());
 
@@ -140,6 +209,35 @@ class SendEmailUseCaseTest {
         );
         verify(messageRepository, never()).save(any());
         verify(emailQueueGateway, never()).sendEmail(any());
+    }
+
+    @Test
+    void getMessages_WithFilters_ReturnsPagedResponse() {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        when(messageRepository.search(eq(userId), eq(EmailMessage.EmailStatus.SENT), eq("dest@"),
+                pageableCaptor.capture()))
+                .thenReturn(new PageImpl<>(List.of(pendingMessage()), PageRequest.of(0, 10), 1));
+
+        var result = sendEmailUseCase.getMessages("testuser", EmailMessage.EmailStatus.SENT, " dest@ ", 0, 10);
+
+        assertEquals(1, result.content().size());
+        assertEquals("dest@example.com", result.content().get(0).toEmail());
+        assertEquals(1, result.totalElements());
+        assertEquals(10, pageableCaptor.getValue().getPageSize());
+    }
+
+    @Test
+    void getMessages_NoFilters_PassesNullsAndClampsPagination() {
+        when(userRepository.findByUsername("testuser")).thenReturn(Optional.of(testUser));
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        when(messageRepository.search(eq(userId), isNull(), isNull(), pageableCaptor.capture()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        sendEmailUseCase.getMessages("testuser", null, "   ", -1, 999);
+
+        assertEquals(0, pageableCaptor.getValue().getPageNumber());
+        assertEquals(100, pageableCaptor.getValue().getPageSize());
     }
 
     @Test

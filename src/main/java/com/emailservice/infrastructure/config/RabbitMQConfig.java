@@ -61,10 +61,6 @@ public class RabbitMQConfig {
         return BindingBuilder.bind(emailQueue).to(emailExchange).with(EMAIL_ROUTING_KEY);
     }
 
-    /**
-     * Messages parked here expire after {@link #RETRY_DELAY_MS} and are dead-lettered
-     * back into the main email exchange, which re-delivers them to the consumer.
-     */
     @Bean
     public Queue retryQueue() {
         return QueueBuilder.durable(RETRY_QUEUE)

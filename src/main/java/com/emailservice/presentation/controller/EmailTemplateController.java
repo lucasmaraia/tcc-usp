@@ -2,6 +2,7 @@ package com.emailservice.presentation.controller;
 
 import com.emailservice.application.dto.EmailTemplateRequest;
 import com.emailservice.application.dto.EmailTemplateResponse;
+import com.emailservice.application.dto.PageResponse;
 import com.emailservice.application.dto.TemplatePreviewRequest;
 import com.emailservice.application.usecase.EmailTemplateUseCase;
 import jakarta.validation.Valid;
@@ -18,9 +19,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -40,10 +41,13 @@ public class EmailTemplateController {
     }
 
     @GetMapping
-    public ResponseEntity<List<EmailTemplateResponse>> getTemplates(
+    public ResponseEntity<PageResponse<EmailTemplateResponse>> getTemplates(
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
             @AuthenticationPrincipal UserDetails userDetails
     ) {
-        return ResponseEntity.ok(templateUseCase.getTemplatesByUser(userDetails.getUsername()));
+        return ResponseEntity.ok(templateUseCase.getTemplatesByUser(userDetails.getUsername(), search, page, size));
     }
 
     @GetMapping("/{id}")
