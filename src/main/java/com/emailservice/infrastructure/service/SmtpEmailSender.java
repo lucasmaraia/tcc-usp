@@ -1,6 +1,7 @@
 package com.emailservice.infrastructure.service;
 
 import com.emailservice.application.dto.EmailAttachmentDto;
+import com.emailservice.application.port.EmailSender;
 import com.emailservice.domain.exception.EmailSendException;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -17,23 +18,20 @@ import java.util.List;
 
 @Service
 @Slf4j
-public class EmailSenderService {
+public class SmtpEmailSender implements EmailSender {
 
     private static final String DEFAULT_ATTACHMENT_TYPE = "application/octet-stream";
 
     private final JavaMailSender mailSender;
     private final String fromEmail;
 
-    public EmailSenderService(JavaMailSender mailSender,
-                              @Value("${spring.mail.username}") String fromEmail) {
+    public SmtpEmailSender(JavaMailSender mailSender,
+                           @Value("${spring.mail.username}") String fromEmail) {
         this.mailSender = mailSender;
         this.fromEmail = fromEmail;
     }
 
-    public void sendEmail(String to, String subject, String htmlBody) {
-        sendEmail(to, subject, htmlBody, List.of());
-    }
-
+    @Override
     public void sendEmail(String to, String subject, String htmlBody, List<EmailAttachmentDto> attachments) {
         try {
             MimeMessage message = mailSender.createMimeMessage();

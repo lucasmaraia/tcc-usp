@@ -2,7 +2,7 @@ package com.emailservice;
 
 import com.emailservice.application.dto.EmailAttachmentDto;
 import com.emailservice.domain.exception.EmailSendException;
-import com.emailservice.infrastructure.service.EmailSenderService;
+import com.emailservice.infrastructure.service.SmtpEmailSender;
 import jakarta.mail.BodyPart;
 import jakarta.mail.Message;
 import jakarta.mail.Session;
@@ -26,7 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class EmailSenderServiceTest {
+class SmtpEmailSenderTest {
 
     @Mock
     private JavaMailSender mailSender;
@@ -40,7 +40,7 @@ class EmailSenderServiceTest {
     @Test
     void sendEmail_Success() throws Exception {
         MimeMessage message = stubMimeMessage();
-        var service = new EmailSenderService(mailSender, "sender@example.com");
+        var service = new SmtpEmailSender(mailSender, "sender@example.com");
 
         service.sendEmail("dest@example.com", "Hello", "<html><body>Hi</body></html>");
 
@@ -53,7 +53,7 @@ class EmailSenderServiceTest {
     @Test
     void sendEmail_WithAttachment_AddsAttachmentPart() throws Exception {
         MimeMessage message = stubMimeMessage();
-        var service = new EmailSenderService(mailSender, "sender@example.com");
+        var service = new SmtpEmailSender(mailSender, "sender@example.com");
         String base64 = Base64.getEncoder().encodeToString("conteudo".getBytes(StandardCharsets.UTF_8));
         var attachment = new EmailAttachmentDto("relatorio.pdf", "application/pdf", base64);
 
@@ -74,7 +74,7 @@ class EmailSenderServiceTest {
     @Test
     void sendEmail_InvalidBase64Attachment_ThrowsEmailSendException() {
         stubMimeMessage();
-        var service = new EmailSenderService(mailSender, "sender@example.com");
+        var service = new SmtpEmailSender(mailSender, "sender@example.com");
         var attachment = new EmailAttachmentDto("arquivo.txt", "text/plain", "not-valid-base64!!!");
 
         assertThrows(EmailSendException.class, () ->
@@ -85,7 +85,7 @@ class EmailSenderServiceTest {
     @Test
     void sendEmail_EmptyFromAddress_ThrowsEmailSendException() {
         stubMimeMessage();
-        var service = new EmailSenderService(mailSender, "");
+        var service = new SmtpEmailSender(mailSender, "");
 
         assertThrows(EmailSendException.class, () ->
                 service.sendEmail("dest@example.com", "Hello", "<html></html>"));
@@ -95,7 +95,7 @@ class EmailSenderServiceTest {
     @Test
     void sendEmail_InvalidRecipient_ThrowsEmailSendException() {
         stubMimeMessage();
-        var service = new EmailSenderService(mailSender, "sender@example.com");
+        var service = new SmtpEmailSender(mailSender, "sender@example.com");
 
         assertThrows(EmailSendException.class, () ->
                 service.sendEmail("not an address", "Hello", "<html></html>"));

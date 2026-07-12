@@ -2,10 +2,10 @@ package com.emailservice.infrastructure.messaging;
 
 import com.emailservice.application.dto.EmailMessageDto;
 import com.emailservice.application.port.EmailQueueGateway;
+import com.emailservice.application.port.EmailSender;
 import com.emailservice.application.port.TemplateRenderer;
 import com.emailservice.application.usecase.SendEmailUseCase;
 import com.emailservice.infrastructure.config.RabbitMQConfig;
-import com.emailservice.infrastructure.service.EmailSenderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -21,7 +21,7 @@ public class EmailConsumer {
     private static final int MAX_RETRIES = 3;
 
     private final TemplateRenderer templateRenderer;
-    private final EmailSenderService emailSenderService;
+    private final EmailSender emailSender;
     private final EmailQueueGateway emailQueueGateway;
     private final SendEmailUseCase sendEmailUseCase;
 
@@ -36,7 +36,7 @@ public class EmailConsumer {
 
         try {
             String htmlBody = templateRenderer.render(emailMessage.htmlContent(), emailMessage.variables());
-            emailSenderService.sendEmail(emailMessage.toEmail(), emailMessage.subject(), htmlBody,
+            emailSender.sendEmail(emailMessage.toEmail(), emailMessage.subject(), htmlBody,
                     emailMessage.attachments());
             sendEmailUseCase.markSent(emailMessage.id(), htmlBody);
             log.info("Email {} sent to {}", emailMessage.id(), emailMessage.toEmail());
